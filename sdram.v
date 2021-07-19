@@ -126,7 +126,7 @@ always @(posedge clk) begin
             dr_a[9] <= 1'b0; dr_a[12:11] <= 1'b0;
             dr_a[10] <= 1'b1; //auto precharge
             dr_dq_reg <= c_data_in;
-            dr_dq_oe = 1'b1;
+            dr_dq_oe <= 1'b1;
             state <= STATE_WAIT;
             wait_next_state <= STATE_IDLE;
             wait_reg <= 16'd1;

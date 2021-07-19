@@ -1,4 +1,4 @@
-module sdram_ctl (
+module sdram (
     input wire clk,
     // CPU
     input wire [23:0] c_addr,
@@ -42,13 +42,17 @@ reg [3:0] state = STATE_INIT_PRECALL;
 reg [15:0]  wait_reg;
 reg [3:0]  wait_next_state;
 
+reg [15:0] dr_dq_reg;
+reg dr_dq_oe = 1'b0;
+assign dr_dq = (dr_dq_oe ? dr_dq_reg : 16'bz);
+
 // refr 7.183 us -> 355 clock -8/10/15 PRECHARGE ALL BEFORE RESET
 reg [8:0] autorefr_cnt = 9'd355;
 
 // 50 Mhz -> 20 ns
 // RP 18ns RFC 60ns
 always @(posedge clk) begin
-    {dr_dqml, dr_dqmh} <= 2'b11;
+    {dr_dqml, dr_dqmh} <= 2'b11; dr_dq_oe <= 1'b0; dr_a <= 13'b0; dr_ba <= 2'b0;
     case (state)
         STATE_INIT_BEGIN: begin
             ram_cmd <= CMD_NOP;
@@ -96,7 +100,7 @@ always @(posedge clk) begin
                 state <= STATE_WAIT;
                 wait_next_state <= STATE_READ;
                 wait_reg <= 16'd1;
-            end if(c_write_req) begin
+            end else if(c_write_req) begin
                 ram_cmd <= CMD_ACTIVE;
                 dr_ba <= c_addr[23:22];
                 dr_a <= c_addr[21:9];
@@ -121,6 +125,8 @@ always @(posedge clk) begin
             dr_a[8:0] <= c_addr[8:0];
             dr_a[9] <= 1'b0; dr_a[12:11] <= 1'b0;
             dr_a[10] <= 1'b1; //auto precharge
+            dr_dq_reg <= c_data_in;
+            dr_dq_oe = 1'b1;
             state <= STATE_WAIT;
             wait_next_state <= STATE_IDLE;
             wait_reg <= 16'd1;
@@ -130,6 +136,7 @@ always @(posedge clk) begin
             state <= STATE_WAIT;
             wait_next_state <= STATE_IDLE;
             wait_reg <= 16'd4;
+            autorefr_cnt <= 9'd355;
         end
         STATE_READ: begin
             ram_cmd <= CMD_READ;

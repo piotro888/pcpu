@@ -5,10 +5,10 @@ module sdram (
     input wire [15:0] c_data_in,
     output reg [15:0] c_data_out,
     input wire c_read_req, c_write_req,
-    output reg c_busy,
+    output reg c_busy, c_read_ready,
     // SDRAM
-    output reg dr_cs_n, dr_dqml, dr_dqmh,
-    output wire dr_cas_n, dr_ras_n, dr_we_n, dr_cke,
+    output reg dr_dqml, dr_dqmh,
+    output wire dr_cs_n, dr_cas_n, dr_ras_n, dr_we_n, dr_cke,
     output reg [1:0] dr_ba,
     output reg  [12:0] dr_a,
     inout [15:0] dr_dq
@@ -25,6 +25,7 @@ localparam CMD_LREG = 3'b000;
 reg [2:0] ram_cmd = CMD_NOP;
 assign {dr_ras_n, dr_cas_n, dr_we_n} = ram_cmd;
 assign dr_cke = 1'b1;
+assign dr_cs_n = 1'b0;
 
 localparam STATE_INIT_BEGIN = 4'b0000;
 localparam STATE_INIT_PRECALL = 4'b0001;
@@ -52,7 +53,8 @@ reg [8:0] autorefr_cnt = 9'd355;
 // 50 Mhz -> 20 ns
 // RP 18ns RFC 60ns
 always @(posedge clk) begin
-    {dr_dqml, dr_dqmh} <= 2'b11; dr_dq_oe <= 1'b0; dr_a <= 13'b0; dr_ba <= 2'b0;
+    {dr_dqml, dr_dqmh} <= 2'b11; dr_dq_oe <= 1'b0; dr_a <= 13'b0; dr_ba <= 2'b0; c_read_ready <= 1'b0;
+
     case (state)
         STATE_INIT_BEGIN: begin
             ram_cmd <= CMD_NOP;
@@ -154,6 +156,7 @@ always @(posedge clk) begin
             state <= STATE_IDLE; //no wait needed
             ram_cmd <= CMD_NOP;
             c_data_out <= dr_dq;
+            c_read_ready <= 1'b1;
         end
         default: begin // STATE_WAIT
             ram_cmd <= CMD_NOP;
@@ -162,6 +165,8 @@ always @(posedge clk) begin
             wait_reg <= wait_reg-1;
         end
     endcase
+    if(state == STATE_IDLE) c_busy <= 1'b0;
+    else c_busy <= 1'b1;
 
     if(|autorefr_cnt) autorefr_cnt <= autorefr_cnt-1;
 end

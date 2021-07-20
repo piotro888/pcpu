@@ -50,6 +50,8 @@ assign dr_dq = (dr_dq_oe ? dr_dq_reg : 16'bz);
 // refr 7.183 us -> 355 clock -8/10/15 PRECHARGE ALL BEFORE RESET
 reg [8:0] autorefr_cnt = 9'd355;
 
+initial c_busy <= 1'b1;
+
 // 50 Mhz -> 20 ns
 // RP 18ns RFC 60ns
 always @(posedge clk) begin
@@ -92,6 +94,7 @@ always @(posedge clk) begin
             wait_reg <= 16'd4; // 80 ns
         end
         STATE_IDLE: begin
+            c_busy <= 1'b1; //default if not staying in idle
             if(c_read_req) begin
                 ram_cmd <= CMD_ACTIVE; //CHECK IF NOT ACTIVATED ALREADY
                 //STORE PROG AND DATA IN DIFFERENT BANKS TO NOT PRECHARGE EVERY COMMAND
@@ -118,6 +121,7 @@ always @(posedge clk) begin
             end else begin
                 ram_cmd <= CMD_NOP;
                 state <= STATE_IDLE;
+                c_busy <= 1'b0;
             end
         end
         STATE_WRITE: begin
@@ -157,16 +161,18 @@ always @(posedge clk) begin
             ram_cmd <= CMD_NOP;
             c_data_out <= dr_dq;
             c_read_ready <= 1'b1;
+            c_busy <= 1'b0;
         end
         default: begin // STATE_WAIT
             ram_cmd <= CMD_NOP;
-            if(wait_reg == 16'b01)
+            if(wait_reg == 16'b01) begin
                 state <= wait_next_state;
+                if (wait_next_state == STATE_IDLE) c_busy <= 1'b0;
+                else c_busy <= 1'b1;
+            end
             wait_reg <= wait_reg-1;
         end
     endcase
-    if(state == STATE_IDLE) c_busy <= 1'b0;
-    else c_busy <= 1'b1;
 
     if(|autorefr_cnt) autorefr_cnt <= autorefr_cnt-1;
 end

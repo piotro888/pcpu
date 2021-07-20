@@ -25,7 +25,7 @@ wire [7:0] alu_flags_out;
 wire [15:0] prog_addr;
 
 // CONTROL SIGNALS
-wire pc_inc, pc_ie, reg_in_mux_ctl, alu_r_mux_ctl, alu_cin;
+wire pc_inc, pc_ie, reg_in_mux_ctl, alu_r_mux_ctl, alu_cin, alu_flags_ie;
 wire [3:0] alu_mode, reg_l_ctl, reg_r_ctl;
 wire [7:0] gp_reg_ie;
 
@@ -39,10 +39,10 @@ generate
 endgenerate
 
 // BLOCK ELEMENTS
-alu alu(reg_l_bus, alu_r_mux, alu_bus, alu_mode, alu_cin, alu_flags_out);
+alu alu(reg_l_bus, alu_r_mux, alu_bus, alu_mode, alu_cin, alu_flags_out, clk, alu_flags_ie);
 pc pc(alu_bus, prog_addr, clk, pc_inc, pc_ie, rst);
 decoder decoder(instr_bus[15:0], pc_inc, pc_ie, reg_in_mux_ctl, alu_r_mux_ctl, alu_cin,
-    ram_write, ram_read, alu_mode, reg_l_ctl, reg_r_ctl, gp_reg_ie, alu_flags_out);
+    ram_write, ram_read, alu_flags_ie, alu_mode, reg_l_ctl, reg_r_ctl, gp_reg_ie, alu_flags_out);
 
 // MUXES DEFINITIONS
 assign reg_in_mux = (reg_in_mux_ctl ? mem_bus : alu_bus);

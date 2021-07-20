@@ -5,10 +5,12 @@ module alu (
 
     input wire [3:0] mode,
     input wire carry_in,
-    output reg [7:0] flags
+    output reg [4:0] flags_reg_out,
+    input wire clk, alu_flags_ie
 );
 
 reg [16:0] outc;
+reg [4:0] flags;
 assign out = outc[15:0];
 
 always @(*) begin
@@ -31,4 +33,10 @@ always @(*) begin
     flags[3] <= (((a_in[15]^b_in[15])^(~mode[0]))&((b_in[15]^outc[15])^mode[0])); //OVF
     flags[4] <= ^outc[15:0]; //PAR
 end
+
+always @(posedge clk) begin
+    if(alu_flags_ie)
+        flags_reg_out <= flags; 
+end
+
 endmodule

@@ -18,17 +18,14 @@ initial begin
 end
 
 reg [14:0] addrb;
-wire [15:0]  qa, qb;
+wire [15:0]  qb;
 
 vgaram vgram(
+	clk,
+	data,
+	addrb,
 	addra,
-    addrb,
-    clk,
-    data,
-    15'b0,
-    wea,
-	1'b0,
-	qa,
+	wea,
 	qb
 );
 
@@ -83,4 +80,4 @@ end
 
 endmodule
 
-`include "oldtmp/vgaram.v"
+//`include "altera/vgaram.v"

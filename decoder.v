@@ -7,10 +7,15 @@ module decoder (
     input wire [7:0] flags
 );
 
-wire [6:0] opcode = instr[6:0];
-wire [2:0] tg_reg = instr[9:7];
-wire [2:0] fo_reg = instr[12:10];
-wire [2:0] so_reg = instr[15:13];
+//wire [6:0] opcode = instr[6:0];
+//wire [2:0] tg_reg = instr[9:7];
+//wire [2:0] fo_reg = instr[12:10];
+//wire [2:0] so_reg = instr[15:13];
+
+wire [6:0] opcode = instr[15:9];
+wire [2:0] tg_reg = instr[8:6];
+wire [2:0] fo_reg = instr[5:3];
+wire [2:0] so_reg = instr[2:0];
 
 reg jmp_en;
 
@@ -103,7 +108,7 @@ always @(*) begin
         end
 
         default:  //nop
-            pc_inc              = 1'b1;
+            pc_inc              <= 1'b1;
     endcase
 end
 

@@ -40,6 +40,8 @@ endgenerate
 // BLOCK ELEMENTS
 alu alu(reg_l_bus, alu_r_mux, alu_bus, alu_mode, alu_cin, alu_flags_out);
 pc pc(alu_bus, prog_addr, clk, pc_inc, pc_ie);
+decoder decoder(instr_bus[15:0], pc_inc, pc_ie, reg_in_mux_ctl, alu_r_mux_ctl, alu_cin,
+    alu_mode, reg_l_ctl, reg_r_ctl, gp_reg_ie, alu_flags_out);
 
 // MUXES DEFINITIONS
 assign reg_in_mux = (reg_in_mux_ctl ? mem_bus : alu_bus);
@@ -51,13 +53,15 @@ assign reg_r_bus = gp_reg_out[reg_r_ctl];
 assign e_addr_bus = alu_bus;
 assign e_prog_addr = prog_addr;
 assign e_data = reg_r_bus;
-assign e_mem_bus = mem_bus;
-assign e_instr = instr_bus;
+assign mem_bus = e_mem_bus;
+assign instr_bus = e_instr;
 assign e_reg_leds = gp_reg_out[0][7:0];
 assign e_pc_leds = prog_addr[3:0];
 
+
+
 endmodule
 
-`include "alu.v"
-`include "pc.v"
-`include "register.v"
+//`include "alu.v"
+//`include "pc.v"
+//`include "register.v"

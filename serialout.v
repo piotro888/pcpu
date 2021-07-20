@@ -10,10 +10,12 @@ always @(posedge clk) begin
     clk_cnt <= clk_cnt+1;
 end
 
+reg [3:0] ser_bit = 4'b0;
+
 wire ref_clk = clk_cnt[22];
 wire ser_clk = clk_cnt[10];
 
-reg ser_bit = 0, tx = 0, rt = 0;
+reg tx = 0, rt = 0;
 
 assign sclk = ser_clk & tx;
 

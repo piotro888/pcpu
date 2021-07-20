@@ -17,6 +17,8 @@ always @(posedge clki) begin
     clk_cnt <= clk_cnt + 1;
 end
 
+reg rst = 1'b1;
+
 always @(posedge cpu_clk) begin // hold reset at startup
 	if(|rst_cnt)
 		rst_cnt <= rst_cnt - 1'b1;
@@ -24,20 +26,20 @@ always @(posedge cpu_clk) begin // hold reset at startup
 		rst <= 1'b0;
 end
 
-reg rst = 1'b1;
+wire ram_read, ram_write;
+wire [7:0] reg_leds;
+wire [15:0] addr_bus, ram_in, prog_addr;
+wire [31:0] instr_out;
 
 cpu cpu(cpu_clk, rst, addr_bus, prog_addr, ram_in, ram_out, instr_out, ram_read, ram_write, reg_leds, pc_leds);
 
-wire [7:0] reg_leds;
+
 serialout regleds(clki, reg_leds, sclk, sdata);
 
-wire vga_we = ram_write;
-wire ram_read, ram_write;
-wire [15:0] addr_bus, ram_in;
-vga gpu(clki, vsync, hsync, r, g, b, addr_bus, vga_we, ram_in);
 
-wire [15:0] prog_addr;
-wire [31:0] instr_out;
+vga gpu(clki, vsync, hsync, r, g, b, addr_bus, ram_write, ram_in);
+
+
 prom prom( prog_addr, ~cpu_clk, instr_out);
     
 endmodule

@@ -9,6 +9,7 @@ module top (
 
 wire cpu_clk;
 reg [31:0] clk_cnt = 0;
+reg [2:0] rst_cnt = 3'b010;
 //assign cpu_clk = clk_cnt[17]; // ~190Hz
 assign cpu_clk = clk_cnt[24];
 
@@ -16,9 +17,14 @@ always @(posedge clki) begin
     clk_cnt <= clk_cnt + 1;
 end
 
-//reg busy = 0;
-wire rst = 0;
+always @(posedge cpu_clk) begin // hold reset at startup
+	if(|rst_cnt)
+		rst_cnt <= rst_cnt - 1'b1;
+	else
+		rst <= 1'b0;
+end
 
+reg rst = 1'b1;
 
 cpu cpu(cpu_clk, rst, addr_bus, prog_addr, ram_in, ram_out, instr_out, reg_leds, pc_leds);
 

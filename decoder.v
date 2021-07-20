@@ -7,15 +7,10 @@ module decoder (
     input wire [7:0] flags
 );
 
-//wire [6:0] opcode = instr[6:0];
-//wire [2:0] tg_reg = instr[9:7];
-//wire [2:0] fo_reg = instr[12:10];
-//wire [2:0] so_reg = instr[15:13];
-
-wire [6:0] opcode = instr[15:9];
-wire [2:0] tg_reg = instr[8:6];
-wire [2:0] fo_reg = instr[5:3];
-wire [2:0] so_reg = instr[2:0];
+wire [6:0] opcode = instr[6:0];
+wire [2:0] tg_reg = instr[9:7];
+wire [2:0] fo_reg = instr[12:10];
+wire [2:0] so_reg = instr[15:13];
 
 reg jmp_en;
 
@@ -117,7 +112,7 @@ always @(*) begin
 end
 
 always @(*) begin
-        case (instr[8:5])
+        case (instr[10:7])
         4'b0001: //jca
             jmp_en <= flags[1];
         4'b0010: //jeq

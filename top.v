@@ -26,12 +26,13 @@ end
 
 reg rst = 1'b1;
 
-cpu cpu(cpu_clk, rst, addr_bus, prog_addr, ram_in, ram_out, instr_out, reg_leds, pc_leds);
+cpu cpu(cpu_clk, rst, addr_bus, prog_addr, ram_in, ram_out, instr_out, ram_read, ram_write, reg_leds, pc_leds);
 
 wire [7:0] reg_leds;
 serialout regleds(clki, reg_leds, sclk, sdata);
 
-wire vga_we = 1'b1; 
+wire vga_we = ram_write;
+wire ram_read, ram_write;
 wire [15:0] addr_bus, ram_in;
 vga gpu(clki, vsync, hsync, r, g, b, addr_bus, vga_we, ram_in);
 

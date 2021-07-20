@@ -39,7 +39,7 @@ endgenerate
 
 // BLOCK ELEMENTS
 alu alu(reg_l_bus, alu_r_mux, alu_bus, alu_mode, alu_cin, alu_flags_out);
-pc pc(alu_bus, prog_addr, clk, pc_inc, pc_ie);
+pc pc(alu_bus, prog_addr, clk, pc_inc, pc_ie, rst);
 decoder decoder(instr_bus[15:0], pc_inc, pc_ie, reg_in_mux_ctl, alu_r_mux_ctl, alu_cin,
     alu_mode, reg_l_ctl, reg_r_ctl, gp_reg_ie, alu_flags_out);
 

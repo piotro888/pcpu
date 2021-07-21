@@ -19,7 +19,7 @@ reg tx = 0, rt = 0;
 
 assign sclk = ser_clk & tx;
 
-always @(posedge ser_clk) begin
+always @(negedge ser_clk) begin
     case (ser_bit) 
 		0: begin
 			sdata <= data[0];

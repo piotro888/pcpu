@@ -12,6 +12,8 @@ reg [31:0] clk_cnt = 0;
 reg [2:0] rst_cnt = 3'b010;
 //assign cpu_clk = clk_cnt[17]; // ~190Hz
 assign cpu_clk = clk_cnt[24]; // ~1Hz
+//assign cpu_clk = clki;
+
 
 always @(posedge clki) begin
     clk_cnt <= clk_cnt + 1;

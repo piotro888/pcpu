@@ -52,6 +52,9 @@ reg [8:0] autorefr_cnt = 9'd355;
 
 initial c_busy <= 1'b1;
 
+reg [23:0] i_addr;
+reg [15:0] i_data_in;
+
 // 50 Mhz -> 20 ns
 // RP 18ns RFC 60ns
 always @(posedge clk) begin
@@ -101,6 +104,8 @@ always @(posedge clk) begin
                 //STORE PROG AND DATA IN DIFFERENT BANKS TO NOT PRECHARGE EVERY COMMAND
                 //8192 rows x 512 col x 16 bit x 4 banks
                 // 13 b     +  9 b    + 16 b   + 2b
+                i_addr <= c_addr;
+                i_data_in <= c_data_in;
                 dr_ba <= c_addr[23:22]; // lower max ram addr and set banks to msb???
                 dr_a <= c_addr[21:9];
                 state <= STATE_WAIT;
@@ -109,6 +114,8 @@ always @(posedge clk) begin
 					 c_busy <= 1'b1;
             end else if(c_write_req) begin
                 ram_cmd <= CMD_ACTIVE;
+                i_addr <= c_addr;
+                i_data_in <= c_data_in;
                 dr_ba <= c_addr[23:22];
                 dr_a <= c_addr[21:9];
                 state <= STATE_WAIT;
@@ -131,11 +138,11 @@ always @(posedge clk) begin
         STATE_WRITE: begin
             ram_cmd <= CMD_WRITE;
             {dr_dqml, dr_dqmh} <= 2'b00;
-            dr_ba <= c_addr[23:22];
-            dr_a[8:0] <= c_addr[8:0];
+            dr_ba <= i_addr[23:22];
+            dr_a[8:0] <= i_addr[8:0];
             dr_a[9] <= 1'b0; dr_a[12:11] <= 1'b0;
             dr_a[10] <= 1'b1; //auto precharge
-            dr_dq_reg <= c_data_in;
+            dr_dq_reg <= i_data_in;
             dr_dq_oe <= 1'b1;
             state <= STATE_WAIT;
             wait_next_state <= STATE_IDLE;
@@ -152,8 +159,8 @@ always @(posedge clk) begin
             ram_cmd <= CMD_READ;
             {dr_dqml, dr_dqmh} <= 2'b00;
             //don't use burst but two subseq reads for instr
-            dr_ba <= c_addr[23:22];
-            dr_a[8:0] <= c_addr[8:0];
+            dr_ba <= i_addr[23:22];
+            dr_a[8:0] <= i_addr[8:0];
             dr_a[9] <= 1'b0; dr_a[12:11] <= 1'b0;
             dr_a[10] <= 1'b1; //auto precharge
             state <= STATE_WAIT;

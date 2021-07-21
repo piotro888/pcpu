@@ -18,7 +18,7 @@ reg jmp_en;
 always @(*) begin
     //defaults
     pc_inc <= 1;
-    {pc_ie, reg_in_mux_ctl, alu_r_mux_ctl, alu_cin, alu_mode, reg_l_ctl, reg_r_ctl, gp_reg_ie, ram_write, ram_read} <= 0;
+    {pc_ie, reg_in_mux_ctl, alu_r_mux_ctl, alu_cin, alu_mode, reg_l_ctl, reg_r_ctl, gp_reg_ie, ram_write, ram_read, alu_flags_ie} <= 0;
     case (opcode)
         7'b0000001: begin //mov
             alu_mode            <= 4'b1001;

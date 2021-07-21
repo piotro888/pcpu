@@ -4,6 +4,7 @@ module decoder (
     output reg pc_inc, pc_ie, reg_in_mux_ctl, alu_r_mux_ctl, alu_cin, ram_write, ram_read, alu_flags_ie,
     output reg [3:0] alu_mode, reg_l_ctl, reg_r_ctl,
     output reg [7:0] gp_reg_ie,
+    input wire mem_busy, mem_ready,
     input wire [4:0] flags
 );
 
@@ -24,20 +25,39 @@ always @(*) begin
             gp_reg_ie[tg_reg]   <= 1'b1;
             reg_l_ctl           <= fo_reg;
         end
-        7'b0000010: begin //ldd 
-            alu_mode            <= 4'b1010;
-            alu_r_mux_ctl       <= 1'b1;
-            reg_in_mux_ctl      <= 1'b1;
-            gp_reg_ie[tg_reg]   <= 1'b1;
-            ram_read            <= 1'b1;
+        7'b0000010: begin //ldd
+            if(mem_busy) begin
+                pc_inc          <= 1'b0;
+            end else if (mem_ready) begin
+                alu_mode        <= 4'b1010;
+                alu_r_mux_ctl   <= 1'b1;
+                reg_in_mux_ctl  <= 1'b1;
+                gp_reg_ie[tg_reg]<= 1'b1;
+            end else begin
+                alu_mode        <= 4'b1010;
+                alu_r_mux_ctl   <= 1'b1;
+                reg_in_mux_ctl  <= 1'b1;
+                ram_read        <= 1'b1;
+                pc_inc          <= 1'b0;
+            end
         end
         7'b0000011: begin //ldo 
-            alu_mode            <= 4'b0000;
-            reg_l_ctl           <= fo_reg;
-            alu_r_mux_ctl       <= 1'b1;
-            reg_in_mux_ctl      <= 1'b1;
-            gp_reg_ie[tg_reg]   <= 1'b1;
-            ram_read            <= 1'b1;
+            if(mem_busy) begin
+                pc_inc          <= 1'b0;
+            end else if (mem_ready) begin
+                alu_mode        <= 4'b0000;
+                reg_l_ctl       <= fo_reg;
+                alu_r_mux_ctl   <= 1'b1;
+                reg_in_mux_ctl  <= 1'b1;
+                gp_reg_ie[tg_reg]<= 1'b1;
+            end else begin    
+                alu_mode        <= 4'b0000;
+                reg_l_ctl       <= fo_reg;
+                alu_r_mux_ctl   <= 1'b1;
+                reg_in_mux_ctl  <= 1'b1;
+                ram_read        <= 1'b1;
+                pc_inc          <= 1'b0;
+            end
         end
         7'b0000100: begin //ldi 
             alu_mode            <= 4'b1010;
@@ -45,17 +65,25 @@ always @(*) begin
             gp_reg_ie[tg_reg]   <= 1'b1;
         end
         7'b0000101: begin //std
-            alu_mode            <= 4'b1010;
-            alu_r_mux_ctl       <= 1'b1;
-            reg_r_ctl           <= fo_reg;
-            ram_write           <= 1'b1;
+            if(mem_busy) begin
+                pc_inc          <= 1'b0;
+            end else begin
+                alu_mode        <= 4'b1010;
+                alu_r_mux_ctl   <= 1'b1;
+                reg_r_ctl       <= fo_reg;
+                ram_write       <= 1'b1;
+            end
         end
         7'b0000110: begin //sto
-            alu_mode            <= 4'b0000;
-            alu_r_mux_ctl       <= 1'b1;
-            reg_r_ctl           <= fo_reg;
-            reg_l_ctl           <= so_reg;
-            ram_write           <= 1'b1;
+            if(mem_busy) begin
+                pc_inc          <= 1'b0;
+            end else begin
+                alu_mode        <= 4'b0000;
+                alu_r_mux_ctl   <= 1'b1;
+                reg_r_ctl       <= fo_reg;
+                reg_l_ctl       <= so_reg;
+                ram_write       <= 1'b1;           
+            end
         end
         7'b0000111: begin //add
             alu_mode            <= 4'b0000;

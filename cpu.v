@@ -5,6 +5,7 @@ module cpu (
     output wire [15:0] e_addr_bus, e_prog_addr, e_data, 
     input wire [15:0] e_mem_bus, 
     input wire [31:0] e_instr,
+    input wire e_mem_busy, e_mem_ready,
 
     output wire ram_read, ram_write,
     output wire [7:0] e_reg_leds,
@@ -42,7 +43,8 @@ endgenerate
 alu alu(reg_l_bus, alu_r_mux, alu_bus, alu_mode, alu_cin, alu_flags_out, clk, alu_flags_ie);
 pc pc(alu_bus, prog_addr, clk, pc_inc, pc_ie, rst);
 decoder decoder(instr_bus[15:0], pc_inc, pc_ie, reg_in_mux_ctl, alu_r_mux_ctl, alu_cin,
-    ram_write, ram_read, alu_flags_ie, alu_mode, reg_l_ctl, reg_r_ctl, gp_reg_ie, alu_flags_out);
+    ram_write, ram_read, alu_flags_ie, alu_mode, reg_l_ctl, reg_r_ctl, gp_reg_ie,
+    e_mem_busy, e_mem_ready, alu_flags_out);
 
 // MUXES DEFINITIONS
 assign reg_in_mux = (reg_in_mux_ctl ? mem_bus : alu_bus);
@@ -66,3 +68,4 @@ endmodule
 //`include "alu.v"
 //`include "pc.v"
 //`include "register.v"
+//`include "decoder.v"

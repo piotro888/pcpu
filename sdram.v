@@ -62,7 +62,8 @@ always @(posedge clk) begin
             ram_cmd <= CMD_NOP;
             state <= STATE_WAIT;
             wait_next_state <= STATE_INIT_PRECALL;
-            wait_reg <= 16'd5000; 
+            //wait_reg <= 16'd5000; 
+				wait_reg <= 16'd10; 
         end
         STATE_INIT_PRECALL: begin
             ram_cmd <= CMD_PRECH;
@@ -94,7 +95,7 @@ always @(posedge clk) begin
             wait_reg <= 16'd4; // 80 ns
         end
         STATE_IDLE: begin
-            c_busy <= 1'b1; //default if not staying in idle
+           // c_busy <= 1'b1; //default if not staying in idle
             if(c_read_req) begin
                 ram_cmd <= CMD_ACTIVE; //CHECK IF NOT ACTIVATED ALREADY
                 //STORE PROG AND DATA IN DIFFERENT BANKS TO NOT PRECHARGE EVERY COMMAND
@@ -105,6 +106,7 @@ always @(posedge clk) begin
                 state <= STATE_WAIT;
                 wait_next_state <= STATE_READ;
                 wait_reg <= 16'd1;
+					 c_busy <= 1'b1;
             end else if(c_write_req) begin
                 ram_cmd <= CMD_ACTIVE;
                 dr_ba <= c_addr[23:22];
@@ -112,12 +114,14 @@ always @(posedge clk) begin
                 state <= STATE_WAIT;
                 wait_next_state <= STATE_WRITE;
                 wait_reg <= 16'd1;
+					 c_busy <= 1'b1;
             end else if(~(|autorefr_cnt)) begin
                 ram_cmd <= CMD_PRECH;
                 dr_a[10] <= 1'b1; //ALL BANKS
                 state <= STATE_WAIT;
                 wait_next_state <= STATE_REFR;
                 wait_reg <= 16'd1;
+					 c_busy <= 1'b1;
             end else begin
                 ram_cmd <= CMD_NOP;
                 state <= STATE_IDLE;

@@ -11,7 +11,8 @@ module sdram (
     output wire dr_cs_n, dr_cas_n, dr_ras_n, dr_we_n, dr_cke,
     output reg [1:0] dr_ba,
     output reg  [12:0] dr_a,
-    inout [15:0] dr_dq
+    inout [15:0] dr_dq,
+	 input wire srclk
 );
 
 localparam CMD_NOP = 3'b111;
@@ -38,7 +39,7 @@ localparam STATE_READ = 4'b0111;
 localparam STATE_CASREAD = 4'b1000;
 localparam STATE_WRITE = 4'b1001;
 localparam STATE_WAIT = 4'b1111;
-reg [3:0] state = STATE_INIT_PRECALL;
+reg [3:0] state = STATE_INIT_BEGIN;
 
 reg [15:0]  wait_reg;
 reg [3:0]  wait_next_state;
@@ -48,18 +49,39 @@ reg dr_dq_oe = 1'b0;
 assign dr_dq = (dr_dq_oe ? dr_dq_reg : 16'bz);
 
 // refr 7.183 us -> 355 clock -8/10/15 PRECHARGE ALL BEFORE RESET
-reg [8:0] autorefr_cnt = 9'd355;
+reg [8:0] autorefr_cnt = 9'd55;
 
 initial c_busy <= 1'b1;
 
 reg [23:0] i_addr;
 reg [15:0] i_data_in;
 
+reg sync_xory_read = 1'b0;
+always @(posedge srclk)begin
+	if(c_read_req & ~c_busy)
+		sync_xory_read <= sync_xory_read^1;
+end
+reg sync_x_read_done = 1'b0;
+wire pulse_c_read = sync_xory_read ^ sync_x_read_done;
+
+reg sync_xory_write = 1'b0;
+always @(posedge srclk)begin
+	if(c_write_req & ~c_busy)
+		sync_xory_write <= sync_xory_write^1;
+end
+reg sync_x_write_done = 1'b0;
+wire pulse_c_write = sync_xory_write ^ sync_x_write_done;
+
+
+reg prev_srclk = 1'b0;
 // 50 Mhz -> 20 ns
 // RP 18ns RFC 60ns
 always @(posedge clk) begin
-    {dr_dqml, dr_dqmh} <= 2'b11; dr_dq_oe <= 1'b0; dr_a <= 13'b0; dr_ba <= 2'b0; c_read_ready <= 1'b0;
-
+    {dr_dqml, dr_dqmh} <= 2'b11; dr_dq_oe <= 1'b0; dr_a <= 13'b0; dr_ba <= 2'b0; 
+	 prev_srclk <= srclk;
+	 if((prev_srclk ^ srclk) & srclk)
+		c_read_ready <= 1'b0;
+	 
     case (state)
         STATE_INIT_BEGIN: begin
             ram_cmd <= CMD_NOP;
@@ -99,7 +121,7 @@ always @(posedge clk) begin
         end
         STATE_IDLE: begin
            // c_busy <= 1'b1; //default if not staying in idle
-            if(c_read_req) begin
+            if(pulse_c_read) begin
                 ram_cmd <= CMD_ACTIVE; //CHECK IF NOT ACTIVATED ALREADY
                 //STORE PROG AND DATA IN DIFFERENT BANKS TO NOT PRECHARGE EVERY COMMAND
                 //8192 rows x 512 col x 16 bit x 4 banks
@@ -112,7 +134,8 @@ always @(posedge clk) begin
                 wait_next_state <= STATE_READ;
                 wait_reg <= 16'd1;
 					 c_busy <= 1'b1;
-            end else if(c_write_req) begin
+					 sync_x_read_done <= sync_x_read_done^1;
+            end else if(pulse_c_write) begin
                 ram_cmd <= CMD_ACTIVE;
                 i_addr <= c_addr;
                 i_data_in <= c_data_in;
@@ -122,6 +145,7 @@ always @(posedge clk) begin
                 wait_next_state <= STATE_WRITE;
                 wait_reg <= 16'd1;
 					 c_busy <= 1'b1;
+					 sync_x_write_done <= sync_x_write_done^1;
             end else if(~(|autorefr_cnt)) begin
                 ram_cmd <= CMD_PRECH;
                 dr_a[10] <= 1'b1; //ALL BANKS

@@ -28,6 +28,9 @@ always @(*) begin
         7'b0000010: begin //ldd
             if(mem_busy) begin
                 pc_inc          <= 1'b0;
+					 // keep addr for mem switcher
+					 alu_mode        <= 4'b1010; 
+                alu_r_mux_ctl   <= 1'b1;
             end else if (mem_ready) begin
                 alu_mode        <= 4'b1010;
                 alu_r_mux_ctl   <= 1'b1;
@@ -44,6 +47,10 @@ always @(*) begin
         7'b0000011: begin //ldo 
             if(mem_busy) begin
                 pc_inc          <= 1'b0;
+					 // keep addr for mem switcher
+					 alu_mode        <= 4'b0000;
+                reg_l_ctl       <= fo_reg;
+                alu_r_mux_ctl   <= 1'b1;
             end else if (mem_ready) begin
                 alu_mode        <= 4'b0000;
                 reg_l_ctl       <= fo_reg;
@@ -67,6 +74,9 @@ always @(*) begin
         7'b0000101: begin //std
             if(mem_busy) begin
                 pc_inc          <= 1'b0;
+					 // keep addr for mem switcher
+					 alu_mode        <= 4'b1010;
+                alu_r_mux_ctl   <= 1'b1;
             end else begin
                 alu_mode        <= 4'b1010;
                 alu_r_mux_ctl   <= 1'b1;
@@ -77,6 +87,10 @@ always @(*) begin
         7'b0000110: begin //sto
             if(mem_busy) begin
                 pc_inc          <= 1'b0;
+					 // keep addr for mem switcher
+					 alu_mode        <= 4'b1010; 
+                alu_r_mux_ctl   <= 1'b1;
+                reg_in_mux_ctl  <= 1'b1;
             end else begin
                 alu_mode        <= 4'b0000;
                 alu_r_mux_ctl   <= 1'b1;

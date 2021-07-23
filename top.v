@@ -59,11 +59,13 @@ always @(posedge cpu_clk) begin // hold reset at startup
 		rst <= 1'b0;
 end
 
-wire ram_read, ram_write, ram_busy, ram_ready;
+wire ram_read, ram_write;
 wire [7:0] reg_leds;
 wire [15:0] addr_bus, ram_in, ram_out, prog_addr;
 wire [31:0] instr_out;
-wire sdram_read, sdram_write, sdram_busy, sdram_ready, vga_write;
+
+wire sdram_busy, sdram_ready;
+reg sdram_read, sdram_write, ram_busy, ram_ready, vga_write;
 
 cpu cpu(cpu_clk, rst, addr_bus, prog_addr, ram_in, ram_out, instr_out, ram_busy, ram_ready, ram_read, ram_write, reg_leds, pc_leds);
 
@@ -96,7 +98,7 @@ end
     
 endmodule
 
-`include "cpu.v"
-`include "serialout.v"
-`include "vga.v"
-`include "sdram.v"
+//`include "cpu.v"
+//`include "serialout.v"
+//`include "vga.v"
+//`include "sdram.v"

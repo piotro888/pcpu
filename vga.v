@@ -1,5 +1,6 @@
 module vga (
 	input wire clk,
+	input wire cpu_clk,
 	output reg hsync, vsync,
 	output reg [2:0] r, g,
 	output reg [1:0] b,
@@ -21,10 +22,11 @@ reg [14:0] addrb;
 wire [15:0]  qb;
 
 vgaram vgram(
-	clk,
 	data,
 	addrb,
+	~pclk,
 	addra,
+	~cpu_clk,
 	wea,
 	qb
 );

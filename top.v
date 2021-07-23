@@ -23,11 +23,11 @@ reg [31:0] clk_cnt = 0;
 reg [2:0] rst_cnt = 3'b010;
 
 `ifndef sim
-//assign cpu_clk = clk_cnt[17]; // ~190Hz
+assign cpu_clk = clk_cnt[17]; // ~190Hz
 //assign cpu_clk = clk_cnt[14];
 //assign cpu_clk = clk_cnt[10];
 //assign cpu_clk = clk_cnt[2];
-assign cpu_clk = clk_cnt[23];
+//assign cpu_clk = clk_cnt[23];
 //assign cpu_clk = clk_cnt[24]; // ~1Hz
 //assign cpu_clk = clki;
 `else
@@ -73,7 +73,7 @@ sdram sdram(clki, {8'b0, addr_bus-16'h4c00}, ram_in, ram_out, sdram_read, sdram_
 
 serialout regleds(clki, reg_leds, sclk, sdata);
 
-vga gpu(clki, vsync, hsync, r, g, b, addr_bus-16'h1000, vga_write, ram_in);
+vga gpu(clki, cpu_clk, vsync, hsync, r, g, b, addr_bus-16'h1000, vga_write, ram_in);
 
 prom prom( prog_addr, ~cpu_clk, instr_out);
 

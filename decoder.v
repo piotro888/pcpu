@@ -179,7 +179,6 @@ always @(*) begin
             end           
         end
         7'b0010000: begin //ret
-        if(long_step) begin
             if(mem_busy) begin
                 pc_inc          <= 1'b0;
                 mem_sp          <= 1'b1;     
@@ -187,6 +186,7 @@ always @(*) begin
                 mem_sp          <= 1'b1; 
                 sp_inc          <= 1'b1;
                 min_pc          <= 1'b1;
+		pc_inc          <= 1'b1;
                 pc_ie           <= 1'b1;
                 step_reset      <= 1'b1;
             end else begin
@@ -194,11 +194,7 @@ always @(*) begin
                 mem_sp          <= 1'b1;
                 ram_read        <= 1'b1;
             end
-        end else begin
-            sp_inc          <= 1'b1;
-            pc_inc          <= 1'b0;
-            step_inc        <= 1'b1;
-        end
+       
         end
         default:  //nop
             pc_inc              <= 1'b1;
@@ -228,12 +224,16 @@ always @(*) begin
     endcase
 end
 
+reg long_step_next = 1'b0;
 always @(posedge clk) begin
     if(step_inc) begin
-        long_step <= 1'b1;
+        long_step_next <= 1'b1;
     end else if(step_reset) begin
-        long_step <= 1'b0;
+        long_step_next <= 1'b0;
     end 
+end
+always @(negedge clk) begin
+    long_step <= long_step_next;
 end
 
 endmodule

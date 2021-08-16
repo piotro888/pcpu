@@ -1,4 +1,4 @@
-//`define sim
+`define sim
 module top (
     input wire clki,
     output wire [3:0] pc_leds,

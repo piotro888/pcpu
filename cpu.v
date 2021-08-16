@@ -26,7 +26,7 @@ wire [7:0] alu_flags_out;
 wire [15:0] prog_addr, sp_out;
 
 // CONTROL SIGNALS
-wire pc_inc, pc_ie, reg_in_mux_ctl, alu_r_mux_ctl, alu_cin, alu_flags_ie, mem_sp, mdata_pc, sp_inc, sp_dec;
+wire pc_inc, pc_ie, reg_in_mux_ctl, alu_r_mux_ctl, alu_cin, alu_flags_ie, mem_sp, mdata_pc, sp_inc, sp_dec, min_pc;
 wire [3:0] alu_mode, reg_l_ctl, reg_r_ctl;
 wire [7:0] gp_reg_ie;
 
@@ -41,9 +41,9 @@ endgenerate
 
 // BLOCK ELEMENTS
 alu alu(reg_l_bus, alu_r_mux, alu_bus, alu_mode, alu_cin, alu_flags_out, clk, alu_flags_ie);
-pc pc(alu_bus, prog_addr, clk, pc_inc, pc_ie, rst);
-decoder decoder(instr_bus[15:0], pc_inc, pc_ie, reg_in_mux_ctl, alu_r_mux_ctl, alu_cin,
-    ram_write, ram_read, alu_flags_ie, mem_sp, mdata_pc, sp_inc, sp_dec,
+pc pc((min_pc ? mem_bus : alu_bus), prog_addr, clk, pc_inc, pc_ie, rst);
+decoder decoder(clk, instr_bus[15:0], pc_inc, pc_ie, reg_in_mux_ctl, alu_r_mux_ctl, alu_cin,
+    ram_write, ram_read, alu_flags_ie, mem_sp, mdata_pc, sp_inc, sp_dec, min_pc,
     alu_mode, reg_l_ctl, reg_r_ctl, gp_reg_ie,
     e_mem_busy, e_mem_ready, alu_flags_out);
 sp sp(clk, rst, 1'b0, sp_inc, sp_dec, alu_bus, sp_out);
@@ -53,12 +53,12 @@ assign reg_in_mux = (reg_in_mux_ctl ? mem_bus : alu_bus);
 assign alu_r_mux = (alu_r_mux_ctl ? instr_bus[31:16] : reg_r_bus);
 assign reg_l_bus = gp_reg_out[reg_l_ctl];
 assign reg_r_bus = gp_reg_out[reg_r_ctl];
-assign mem_bus = (mem_sp ? sp_out : e_mem_bus);
+assign e_addr_bus = (mem_sp ? sp_out : alu_bus);
 assign e_data = (mdata_pc ? prog_addr : reg_r_bus);
 
 // EXTERNAL CONNECTIONS
-assign e_addr_bus = alu_bus;
 assign e_prog_addr = prog_addr;
+assign mem_bus = e_mem_bus;
 assign instr_bus = e_instr;
 assign e_reg_leds = gp_reg_out[0][7:0];
 assign e_pc_leds = prog_addr[3:0];

@@ -1,7 +1,7 @@
 module decoder (
     input wire [15:0] instr,
 
-    output reg pc_inc, pc_ie, reg_in_mux_ctl, alu_r_mux_ctl, alu_cin, ram_write, ram_read, alu_flags_ie,
+    output reg pc_inc, pc_ie, reg_in_mux_ctl, alu_r_mux_ctl, alu_cin, ram_write, ram_read, alu_flags_ie, mem_sp, mdata_sp, sp_inc, sp_dec,
     output reg [3:0] alu_mode, reg_l_ctl, reg_r_ctl,
     output reg [7:0] gp_reg_ie,
     input wire mem_busy, mem_ready,
@@ -18,7 +18,7 @@ reg jmp_en;
 always @(*) begin
     //defaults
     pc_inc <= 1;
-    {pc_ie, reg_in_mux_ctl, alu_r_mux_ctl, alu_cin, alu_mode, reg_l_ctl, reg_r_ctl, gp_reg_ie, ram_write, ram_read, alu_flags_ie} <= 0;
+    {pc_ie, reg_in_mux_ctl, alu_r_mux_ctl, alu_cin, alu_mode, reg_l_ctl, reg_r_ctl, gp_reg_ie, ram_write, ram_read, alu_flags_ie, mem_sp, mdata_sp, sp_inc, sp_dec} <= 0;
     case (opcode)
         7'b0000001: begin //mov
             alu_mode            <= 4'b1001;
@@ -154,7 +154,24 @@ always @(*) begin
             pc_ie               <= jmp_en;
             pc_inc              <= ~jmp_en;
         end
-
+        7'b0011111: begin //cll
+            if(mem_busy) begin
+                pc_inc          <= 1'b0;
+                mem_sp          <= 1'b1;         
+            end else begin
+                mem_sp          <= 1'b1;
+                mdata_sp        <= 1'b1;
+                pc_inc          <= 1'b0;
+                ram_write       <= 1'b1;
+                pc_ie           <= 1'b1;
+                sp_dec          <= 1'b1;
+            end
+        end
+        // 7'b0011111: begin //ret
+        //     mem_sp              <= 1'b1;
+        //     pc_ie               <= 1'b1;
+        //     sp_inc              <= 1'b1;
+        // end
         default:  //nop
             pc_inc              <= 1'b1;
     endcase

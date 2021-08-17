@@ -26,7 +26,7 @@ wire [7:0] alu_flags_out;
 wire [15:0] prog_addr, spec_reg_out;
 
 // CONTROL SIGNALS
-wire pc_inc, pc_ie, reg_in_mux_ctl, alu_r_mux_ctl, alu_cin, alu_flags_ie, reg_sr_in;
+wire pc_inc, pc_ie, reg_in_mux_ctl, alu_r_mux_ctl, alu_cin, alu_flags_ie, reg_sr_in, sr_ie, sr_pc_over;
 wire [3:0] alu_mode, reg_l_ctl, reg_r_ctl;
 wire [7:0] gp_reg_ie;
 
@@ -41,9 +41,9 @@ endgenerate
 
 // BLOCK ELEMENTS
 alu alu(reg_l_bus, alu_r_mux, alu_bus, alu_mode, alu_cin, alu_flags_out, clk, alu_flags_ie);
-pc pc(alu_bus, prog_addr, clk, pc_inc, pc_ie, rst);
+pc pc(alu_bus, prog_addr, clk, pc_inc, pc_ie | (sr_ie & instr_bus[31:16] == 16'b0), rst);
 decoder decoder(instr_bus[15:0], pc_inc, pc_ie, reg_in_mux_ctl, alu_r_mux_ctl, alu_cin,
-    ram_write, ram_read, alu_flags_ie, reg_sr_in, alu_mode, reg_l_ctl, reg_r_ctl, gp_reg_ie,
+    ram_write, ram_read, alu_flags_ie, reg_sr_in, sr_ie, sr_pc_over, alu_mode, reg_l_ctl, reg_r_ctl, gp_reg_ie,
     e_mem_busy, e_mem_ready, alu_flags_out);
 
 // MUXES DEFINITIONS
@@ -51,7 +51,7 @@ assign reg_in_mux = (reg_in_mux_ctl | reg_sr_in ? (reg_sr_in ? spec_reg_out : me
 assign alu_r_mux = (alu_r_mux_ctl ? instr_bus[31:16] : reg_r_bus);
 assign reg_l_bus = gp_reg_out[reg_l_ctl];
 assign reg_r_bus = gp_reg_out[reg_r_ctl];
-assign spec_reg_out = prog_addr;
+assign spec_reg_out = ((instr_bus[31:16] == 16'b0 || sr_pc_over) ? prog_addr : 16'b0);
 
 // EXTERNAL CONNECTIONS
 assign e_addr_bus = alu_bus;

@@ -22,7 +22,7 @@ wire [15:0] reg_in_mux;
 wire [15:0] alu_r_mux;
 
 // CONNECTS
-wire [7:0] alu_flags_out;
+wire [5:0] alu_flags_out;
 wire [15:0] prog_addr, spec_reg_out;
 
 // CONTROL SIGNALS
@@ -63,10 +63,3 @@ assign e_reg_leds = gp_reg_out[0][7:0];
 assign e_pc_leds = prog_addr[3:0];
 
 endmodule
-
-`ifndef ALTERA_RESERVED_QIS
-`include "alu.v"
-`include "pc.v"
-`include "register.v"
-`include "decoder.v"
-`endif

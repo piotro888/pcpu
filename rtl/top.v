@@ -1,4 +1,3 @@
-//`define sim
 module top (
     input wire clki,
     output wire [3:0] pc_leds,
@@ -20,18 +19,17 @@ module top (
 	`endif
 );
 
+`ifdef sim
+$display ("SIM");
+`endif
+
 wire cpu_clk;
 reg [31:0] clk_cnt = 0;
 reg [2:0] rst_cnt = 3'b010;
 
 `ifndef sim
 assign cpu_clk = clk_cnt[17]; // ~190Hz
-//assign cpu_clk = clk_cnt[14];
-//assign cpu_clk = clk_cnt[10];
-//assign cpu_clk = clk_cnt[2];
-//assign cpu_clk = clk_cnt[23];
 //assign cpu_clk = clk_cnt[24]; // ~1Hz
-//assign cpu_clk = clki;
 `else
 assign cpu_clk = clk_cnt[2];
 wire dr_dqml, dr_dqmh;
@@ -105,8 +103,3 @@ always @(*) begin
 end
     
 endmodule
-
-//`include "cpu.v"
-//`include "serialout.v"
-//`include "vga.v"
-//`include "sdram.v"

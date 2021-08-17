@@ -1,0 +1,9 @@
+.vscode/
+quartus/
+
+rtl/tpaltera
+rtl/test/sdr*
+
+rtl/initrom.hex
+
+old/

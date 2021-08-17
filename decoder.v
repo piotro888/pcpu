@@ -1,7 +1,7 @@
 module decoder (
     input wire [15:0] instr,
 
-    output reg pc_inc, pc_ie, reg_in_mux_ctl, alu_r_mux_ctl, alu_cin, ram_write, ram_read, alu_flags_ie,
+    output reg pc_inc, pc_ie, reg_in_mux_ctl, alu_r_mux_ctl, alu_cin, ram_write, ram_read, alu_flags_ie, reg_sr_in,
     output reg [3:0] alu_mode, reg_l_ctl, reg_r_ctl,
     output reg [7:0] gp_reg_ie,
     input wire mem_busy, mem_ready,
@@ -153,6 +153,14 @@ always @(*) begin
             alu_r_mux_ctl       <= 1'b1;
             pc_ie               <= jmp_en;
             pc_inc              <= ~jmp_en;
+        end
+        7'b0001111: begin //jal
+            alu_mode            <= 4'b1010;
+            alu_r_mux_ctl       <= 1'b1;
+            pc_ie               <= 1'b1;
+            pc_inc              <= 1'b0;
+            reg_sr_in           <= 1'b1;
+            gp_reg_ie[tg_reg]   <= 1'b1;
         end
 
         default:  //nop

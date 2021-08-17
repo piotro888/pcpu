@@ -1,8 +1,7 @@
 module decoder (
-    input wire clk,
     input wire [15:0] instr,
 
-    output reg pc_inc, pc_ie, reg_in_mux_ctl, alu_r_mux_ctl, alu_cin, ram_write, ram_read, alu_flags_ie, mem_sp, mdata_sp, sp_inc, sp_dec, min_pc,
+    output reg pc_inc, pc_ie, reg_in_mux_ctl, alu_r_mux_ctl, alu_cin, ram_write, ram_read, alu_flags_ie,
     output reg [3:0] alu_mode, reg_l_ctl, reg_r_ctl,
     output reg [7:0] gp_reg_ie,
     input wire mem_busy, mem_ready,
@@ -15,12 +14,11 @@ wire [2:0] fo_reg = instr[12:10];
 wire [2:0] so_reg = instr[15:13];
 
 reg jmp_en;
-reg long_step = 1'b0, step_inc = 1'b0, step_reset = 1'b0;
 
 always @(*) begin
     //defaults
     pc_inc <= 1;
-    {pc_ie, reg_in_mux_ctl, alu_r_mux_ctl, alu_cin, alu_mode, reg_l_ctl, reg_r_ctl, gp_reg_ie, ram_write, ram_read, alu_flags_ie, mem_sp, mdata_sp, sp_inc, sp_dec, step_inc, step_reset, min_pc} <= 0;
+    {pc_ie, reg_in_mux_ctl, alu_r_mux_ctl, alu_cin, alu_mode, reg_l_ctl, reg_r_ctl, gp_reg_ie, ram_write, ram_read, alu_flags_ie} <= 0;
     case (opcode)
         7'b0000001: begin //mov
             alu_mode            <= 4'b1001;
@@ -156,46 +154,7 @@ always @(*) begin
             pc_ie               <= jmp_en;
             pc_inc              <= ~jmp_en;
         end
-        7'b0001111: begin //cll
-            if(long_step) begin
-                alu_mode        <= 4'b1010;
-                alu_r_mux_ctl   <= 1'b1;
-                pc_ie           <= 1'b1;
-                pc_inc          <= 1'b0;
-                step_reset      <= 1'b1;
-            end else begin
-                if(mem_busy) begin
-                    pc_inc          <= 1'b0;
-                    mem_sp          <= 1'b1; 
-                    mdata_sp        <= 1'b1;        
-                end else begin
-                    mem_sp          <= 1'b1;
-                    mdata_sp        <= 1'b1;
-                    pc_inc          <= 1'b0;
-                    ram_write       <= 1'b1;
-                    sp_dec          <= 1'b1;
-                    step_inc        <= 1'b1;
-                end
-            end           
-        end
-        7'b0010000: begin //ret
-            if(mem_busy) begin
-                pc_inc          <= 1'b0;
-                mem_sp          <= 1'b1;     
-            end else if (mem_ready) begin
-                mem_sp          <= 1'b1; 
-                sp_inc          <= 1'b1;
-                min_pc          <= 1'b1;
-		pc_inc          <= 1'b1;
-                pc_ie           <= 1'b1;
-                step_reset      <= 1'b1;
-            end else begin
-                pc_inc          <= 1'b0;
-                mem_sp          <= 1'b1;
-                ram_read        <= 1'b1;
-            end
-       
-        end
+
         default:  //nop
             pc_inc              <= 1'b1;
     endcase
@@ -223,17 +182,4 @@ always @(*) begin
             jmp_en <= 1; 
     endcase
 end
-
-reg long_step_next = 1'b0;
-always @(posedge clk) begin
-    if(step_inc) begin
-        long_step_next <= 1'b1;
-    end else if(step_reset) begin
-        long_step_next <= 1'b0;
-    end 
-end
-always @(negedge clk) begin
-    long_step <= long_step_next;
-end
-
 endmodule

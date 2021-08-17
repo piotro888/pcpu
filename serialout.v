@@ -5,6 +5,7 @@ module serialout (
     output reg sdata,
 
 	input wire sdatain,
+	output wire sdata_pl,
 	output reg [7:0] btout
 );
 
@@ -15,12 +16,14 @@ end
 
 reg [3:0] ser_bit = 4'b0;
 
-wire ref_clk = clk_cnt[22];
+//wire ref_clk = clk_cnt[22];
+wire ref_clk = clk_cnt[20];
 wire ser_clk = clk_cnt[10];
 
 reg tx = 0, rt = 0;
 
 assign sclk = ser_clk & tx;
+assign sdata_pl = tx;
 
 always @(negedge ser_clk) begin
     case (ser_bit) 

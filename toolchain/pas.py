@@ -403,19 +403,20 @@ def initInstructions():
 #    instructions['pop'] = Instruction('pop', 0x12, 1, 0, 0, 0)
     instructions['srl'] = Instruction('srl', 0x10, 1, 0, 0, 3)
     instructions['srs'] = Instruction('srs', 0x11, 0, 1, 0, 3)
-    instructions['scl'] = Instruction('scl', 0x15, 0, 0, 0, 2)
-    instructions['trp'] = Instruction('trp', 0x16, 0, 0, 0, 0)
-    instructions['and'] = Instruction('and', 0x17, 1, 1, 1, 0)
-    instructions['orr'] = Instruction('orr', 0x18, 1, 1, 1, 0)
-    instructions['xor'] = Instruction('xor', 0x19, 1, 1, 1, 0)
-    instructions['ani'] = Instruction('ani', 0x1A, 1, 1, 0, 3)
-    instructions['ori'] = Instruction('ori', 0x1B, 1, 1, 0, 3)
-    instructions['xoi'] = Instruction('xoi', 0x1C, 1, 1, 0, 3)
-    instructions['not'] = Instruction('not', 0x1D, 1, 1, 0, 0)
-    instructions['shr'] = Instruction('shr', 0x1E, 1, 1, 1, 0)
-    instructions['shl'] = Instruction('shl', 0x1F, 1, 1, 1, 0)
-    instructions['cai'] = Instruction('cai', 0x20, 0, 1, 0, 3)
-    instructions['plo'] = Instruction('plo', 0x21, 1, 1, 0, 2)
+#    instructions['scl'] = Instruction('scl', 0x15, 0, 0, 0, 2)
+#    instructions['trp'] = Instruction('trp', 0x16, 0, 0, 0, 0)
+    instructions['and'] = Instruction('and', 0x13, 1, 1, 1, 0)
+    instructions['orr'] = Instruction('orr', 0x14, 1, 1, 1, 0)
+    instructions['xor'] = Instruction('xor', 0x15, 1, 1, 1, 0)
+    instructions['ani'] = Instruction('ani', 0x16, 1, 1, 0, 3)
+    instructions['ori'] = Instruction('ori', 0x17, 1, 1, 0, 3)
+    instructions['xoi'] = Instruction('xoi', 0x18, 1, 1, 0, 3)
+    instructions['shr'] = Instruction('shr', 0x19, 1, 1, 1, 0)
+    instructions['shl'] = Instruction('shl', 0x1A, 1, 1, 1, 0)
+    instructions['cai'] = Instruction('cai', 0x1B, 0, 1, 0, 3)
+    instructions['mul'] = Instruction('mul', 0x1C, 1, 1, 1, 0)
+    instructions['div'] = Instruction('div', 0x1D, 1, 1, 1, 0)
+    # instructions['plo'] = Instruction('plo', 0x1D, 1, 1, 0, 2)
     instructions['hlt'] = Instruction('hlt', 0x2F, 0, 0, 0, 0)
 
 class Instruction:
@@ -458,7 +459,7 @@ class segment (Enum):
 
 def welcome():
     print("[INFO] pas - pcpu v2 assembler ")
-    print("[INFO] Version 1.3 by Piotr Węgrzyn\n")
+    print("[INFO] Version 1.4 by Piotr Węgrzyn\n")
 
 def help():
     pass

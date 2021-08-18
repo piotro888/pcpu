@@ -172,7 +172,83 @@ always @(*) begin
             reg_r_ctl           <= fo_reg;
             sr_ie               <= 1'b1;
         end
-
+        7'b0010011: begin //and
+            alu_mode            <= 4'b0010;
+            reg_l_ctl           <= fo_reg;
+            reg_r_ctl           <= so_reg;
+            gp_reg_ie[tg_reg]   <= 1'b1;
+            alu_flags_ie        <= 1'b1;
+        end
+        7'b0010100: begin //orr
+            alu_mode            <= 4'b0011;
+            reg_l_ctl           <= fo_reg;
+            reg_r_ctl           <= so_reg;
+            gp_reg_ie[tg_reg]   <= 1'b1;
+            alu_flags_ie        <= 1'b1;
+        end
+        7'b0010101: begin //xor
+            alu_mode            <= 4'b0100;
+            reg_l_ctl           <= fo_reg;
+            reg_r_ctl           <= so_reg;
+            gp_reg_ie[tg_reg]   <= 1'b1;
+            alu_flags_ie        <= 1'b1;
+        end
+        7'b0010110: begin //ani
+            alu_mode            <= 4'b0010;
+            reg_l_ctl           <= fo_reg;
+            alu_r_mux_ctl       <= 1'b1;
+            gp_reg_ie[tg_reg]   <= 1'b1;
+            alu_flags_ie        <= 1'b1;
+        end
+        7'b0010111: begin //ori
+            alu_mode            <= 4'b0011;
+            reg_l_ctl           <= fo_reg;
+            alu_r_mux_ctl       <= 1'b1;
+            gp_reg_ie[tg_reg]   <= 1'b1;
+            alu_flags_ie        <= 1'b1;
+        end
+        7'b0011000: begin //xoi
+            alu_mode            <= 4'b0100;
+            reg_l_ctl           <= fo_reg;
+            alu_r_mux_ctl       <= 1'b1;
+            gp_reg_ie[tg_reg]   <= 1'b1;
+            alu_flags_ie        <= 1'b1;
+        end
+        7'b0011001: begin //shl
+            alu_mode            <= 4'b0101;
+            reg_l_ctl           <= fo_reg;
+            reg_r_ctl           <= so_reg;
+            gp_reg_ie[tg_reg]   <= 1'b1;
+            alu_flags_ie        <= 1'b1;
+        end
+        7'b0011010: begin //shr
+            alu_mode            <= 4'b0110;
+            reg_l_ctl           <= fo_reg;
+            reg_r_ctl           <= so_reg;
+            gp_reg_ie[tg_reg]   <= 1'b1;
+            alu_flags_ie        <= 1'b1;
+        end
+        7'b0011011: begin //cai
+            alu_mode            <= 4'b0010;
+            reg_l_ctl           <= fo_reg;
+            alu_r_mux_ctl       <= 1'b1;
+            alu_flags_ie        <= 1'b1;
+        end
+        7'b0011100: begin //mul
+            alu_mode            <= 4'b0111;
+            reg_l_ctl           <= fo_reg;
+            reg_r_ctl           <= so_reg;
+            gp_reg_ie[tg_reg]   <= 1'b1;
+            alu_flags_ie        <= 1'b1;
+        end
+        7'b0011101: begin //div
+            alu_mode            <= 4'b1000;
+            reg_l_ctl           <= fo_reg;
+            reg_r_ctl           <= so_reg;
+            gp_reg_ie[tg_reg]   <= 1'b1;
+            alu_flags_ie        <= 1'b1;
+        end
+        
         default:  //nop
             pc_inc              <= 1'b1;
     endcase

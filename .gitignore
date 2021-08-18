@@ -7,3 +7,6 @@ rtl/test/sdr*
 rtl/initrom.hex
 
 old/
+
+*.bak
+*.ver

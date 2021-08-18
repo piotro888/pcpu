@@ -10,8 +10,6 @@ always begin
     #2 clk_in <= ~clk_in;
 end
 
-`break
-
 top top(.clki(clk_in));
 
 endmodule

@@ -1,3 +1,4 @@
+//`define sim
 module top (
     input wire clki,
     output wire [3:0] pc_leds,
@@ -19,16 +20,14 @@ module top (
 	`endif
 );
 
-`ifdef sim
-$display ("SIM");
-`endif
 
 wire cpu_clk;
 reg [31:0] clk_cnt = 0;
 reg [2:0] rst_cnt = 3'b010;
 
 `ifndef sim
-assign cpu_clk = clk_cnt[17]; // ~190Hz
+//assign cpu_clk = clk_cnt[17]; // ~190Hz
+assign cpu_clk = clk_cnt[6]; 
 //assign cpu_clk = clk_cnt[24]; // ~1Hz
 `else
 assign cpu_clk = clk_cnt[2];
@@ -83,6 +82,7 @@ prom prom( prog_addr, ~cpu_clk, instr_out);
 always @(*) begin
 	{sdram_read, sdram_write, ram_busy, vga_write} = 4'b0;
 	ram_ready = 1'b1;
+    ram_out = 16'b0;
 	if(addr_bus ==  16'h0000) begin
 		//read only
 		ram_out = {8'b0, btinputreg};
@@ -91,7 +91,6 @@ always @(*) begin
 	end else if (addr_bus >= 16'h1000 && addr_bus < 16'h4c00) begin
 		// vga memory write only
 		vga_write = ram_write;
-		ram_out = 16'b0;
 	end
 	else begin
 		sdram_write = ram_write;

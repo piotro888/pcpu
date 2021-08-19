@@ -8,7 +8,9 @@ module top (
 	output wire [1:0] b,
 	input wire sdatain,
 	output wire sdata_pl,
-	input wire rst_in
+	input wire rst_in,
+	input wire usb_rx,
+	output wire usb_tx
 	
 	`ifndef sim
 	,
@@ -28,7 +30,7 @@ reg [2:0] rst_cnt = 3'b010;
 
 `ifndef sim
 //assign cpu_clk = clk_cnt[17]; // ~190Hz
-assign cpu_clk = clk_cnt[6]; 
+assign cpu_clk = clk_cnt[5]; 
 //assign cpu_clk = clk_cnt[24]; // ~1Hz
 `else
 assign cpu_clk = clk_cnt[2];
@@ -61,10 +63,12 @@ always @(posedge cpu_clk) begin // hold reset at startup
 end
 
 wire ram_read, ram_write;
-wire [7:0] reg_leds, btinputreg;
+wire [7:0] reg_leds, btinputreg, rx_data;
 wire [15:0] addr_bus, ram_in, prog_addr, sdram_out;
 reg [15:0] ram_out;
 wire [31:0] instr_out;
+wire rx_new, tx_ready;
+reg uart_write, uart_read;
 
 wire sdram_busy, sdram_ready;
 reg sdram_read, sdram_write, ram_busy, ram_ready, vga_write;
@@ -79,15 +83,22 @@ vga gpu(clki, cpu_clk, vsync, hsync, r, g, b, addr_bus-16'h1000, vga_write, ram_
 
 prom prom( prog_addr, ~cpu_clk, instr_out);
 
+uart uart(usb_rx, usb_tx, clki, rx_data, ram_in, rx_new, tx_ready, uart_write, uart_read);
 
 // hw memory switching
 always @(*) begin
-	{sdram_read, sdram_write, ram_busy, vga_write} = 4'b0;
+	{sdram_read, sdram_write, ram_busy, vga_write, uart_write, uart_read} = 4'b0;
 	ram_ready = 1'b1;
     ram_out = 16'b0;
 	if(addr_bus ==  16'h0000) begin
 		//read only
 		ram_out = {8'b0, btinputreg};
+	end else if (addr_bus == 16'h0001) begin
+		ram_out = {8'b0, rx_data};
+		uart_write = ram_write;
+		uart_read = ram_read;
+	end else if (addr_bus == 16'h0002) begin
+		ram_out = {14'b0, tx_ready, rx_new};
 	end else if(addr_bus < 16'h1000) begin
 		
 	end else if (addr_bus >= 16'h1000 && addr_bus < 16'h4c00) begin

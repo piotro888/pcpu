@@ -36,6 +36,7 @@ always @(*) begin
                 alu_r_mux_ctl   <= 1'b1;
                 reg_in_mux_ctl  <= 1'b1;
                 gp_reg_ie[tg_reg]<= 1'b1;
+                ram_read        <= 1'b1;
             end else begin
                 alu_mode        <= 4'b1010;
                 alu_r_mux_ctl   <= 1'b1;
@@ -57,6 +58,7 @@ always @(*) begin
                 alu_r_mux_ctl   <= 1'b1;
                 reg_in_mux_ctl  <= 1'b1;
                 gp_reg_ie[tg_reg]<= 1'b1;
+                ram_read        <= 1'b1;
             end else begin    
                 alu_mode        <= 4'b0000;
                 reg_l_ctl       <= fo_reg;

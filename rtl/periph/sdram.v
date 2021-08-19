@@ -62,7 +62,7 @@ always @(posedge srclk)begin
 		sync_xory_read <= sync_xory_read^1;
 end
 reg sync_x_read_done = 1'b0;
-wire pulse_c_read = sync_xory_read ^ sync_x_read_done;
+wire pulse_c_read = (sync_xory_read ^ sync_x_read_done) & ~c_read_ready;
 
 reg sync_xory_write = 1'b0;
 always @(posedge srclk)begin

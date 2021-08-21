@@ -64,7 +64,8 @@ end
 
 wire ram_read, ram_write;
 wire [7:0] reg_leds, btinputreg, rx_data;
-wire [15:0] addr_bus, ram_in, prog_addr, sdram_out;
+wire [15:0] addr_bus, ram_in, prog_addr;
+wire [31:0] sdram_out;
 reg [15:0] ram_out;
 wire [31:0] instr_out;
 wire rx_new, tx_ready;
@@ -73,7 +74,7 @@ reg uart_write, uart_read;
 wire sdram_busy, sdram_ready;
 reg sdram_read, sdram_write, ram_busy, ram_ready, vga_write;
 
-cpu cpu(cpu_clk, cpu_rst, addr_bus, prog_addr, ram_in, ram_out, instr_out, ram_busy, ram_ready, ram_read, ram_write, reg_leds, pc_leds);
+cpu cpu(cpu_clk, cpu_rst, addr_bus, prog_addr, ram_in, ram_out, instr_out, sdram_out, ram_busy, ram_ready, ram_read, ram_write, reg_leds, pc_leds);
 
 sdram sdram(clki, {8'b0, addr_bus-16'h4c00}, ram_in, sdram_out, sdram_read, sdram_write, sdram_busy, sdram_ready, dr_dqml, dr_dqmh, dr_cs_n, dr_cas_n, dr_ras_n, dr_we_n, dr_cke, dr_ba, dr_a, dr_dq, cpu_clk);
 
@@ -110,7 +111,7 @@ always @(*) begin
 		sdram_read = ram_read;
 		ram_busy = sdram_busy;
 		ram_ready = sdram_ready;
-		ram_out = sdram_out;
+		ram_out = sdram_out[15:0];
 	end
 end
     

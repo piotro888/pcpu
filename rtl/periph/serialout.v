@@ -25,6 +25,8 @@ reg tx = 0, rt = 0;
 assign sclk = ser_clk & tx;
 assign sdata_pl = tx;
 
+initial btout <= 8'b0;
+
 always @(negedge ser_clk) begin
     case (ser_bit) 
 		0: begin

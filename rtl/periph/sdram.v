@@ -12,7 +12,7 @@ module sdram (
     output reg [1:0] dr_ba,
     output reg  [12:0] dr_a,
     inout [15:0] dr_dq,
-	 input wire srclk
+	 input wire srclk,
     // instruction support
     input wire instruction_mode
 );
@@ -56,6 +56,7 @@ assign dr_dq = (dr_dq_oe ? dr_dq_reg : 16'bz);
 reg [8:0] autorefr_cnt = 9'd55;
 
 initial c_busy <= 1'b1;
+initial c_read_ready <= 1'b0;
 
 reg [22:0] i_addr;
 reg [15:0] i_data_in;
@@ -84,8 +85,10 @@ reg prev_srclk = 1'b0;
 always @(posedge clk) begin
     {dr_dqml, dr_dqmh} <= 2'b11; dr_dq_oe <= 1'b0; dr_a <= 13'b0; dr_ba <= 2'b0; 
 	 prev_srclk <= srclk;
-	 if((prev_srclk ^ srclk) & srclk)
+	 if((prev_srclk ^ srclk) & srclk & ~l_instruction_mode)
 		c_read_ready <= 1'b0;
+     if(prev_srclk != srclk && srclk == 1'b0 && l_instruction_mode == 1'b1) 
+        c_read_ready <= 1'b0;
 	 
     case (state)
         STATE_INIT_BEGIN: begin
@@ -133,7 +136,7 @@ always @(posedge clk) begin
                 // 13 b     +  9 b    + 16 b   + 2b
                 i_addr <= c_addr;
                 i_data_in <= c_data_in;
-                dr_ba <= {instruction_mode, i_addr[22]}; // lower max ram addr and set banks to msb???
+                dr_ba <= {instruction_mode, c_addr[22]}; // lower max ram addr and set banks to msb???
                 dr_a <= c_addr[21:9];
                 state <= STATE_WAIT;
                 wait_next_state <= STATE_READ;
@@ -145,7 +148,7 @@ always @(posedge clk) begin
                 ram_cmd <= CMD_ACTIVE;
                 i_addr <= c_addr;
                 i_data_in <= c_data_in;
-                dr_ba <= {instruction_mode, i_addr[22]};
+                dr_ba <= {instruction_mode, c_addr[22]};
                 dr_a <= c_addr[21:9];
                 state <= STATE_WAIT;
                 wait_next_state <= STATE_WRITE;
@@ -169,7 +172,7 @@ always @(posedge clk) begin
         STATE_WRITE: begin
             ram_cmd <= CMD_WRITE;
             {dr_dqml, dr_dqmh} <= 2'b00;
-            dr_ba <= i_addr[23:22];
+            dr_ba <= {instruction_mode, i_addr[22]};
             dr_a[8:0] <= i_addr[8:0];
             dr_a[9] <= 1'b0; dr_a[12:11] <= 1'b0;
             dr_a[10] <= 1'b1; //auto precharge
@@ -192,7 +195,7 @@ always @(posedge clk) begin
             //don't use burst but two subseq reads for instr
             dr_ba <= {instruction_mode, i_addr[22]};
             if(l_instruction_mode) begin
-                dr_a[9:0] <= {i_addr[8:1], 1'b0};
+                dr_a[9:0] <= {i_addr[8:0], 1'b0};
                 dr_a[12:11] <= 1'b0;
                 dr_a[10] <= 1'b0; //disable auto precharge for second read
                 state <= STATE_READ_INSTR2;
@@ -210,7 +213,7 @@ always @(posedge clk) begin
             ram_cmd <= CMD_NOP;
             c_data_out <= {16'b0, dr_dq};
             if(l_instruction_mode) begin
-                state <= STATE_CASREAD_INSTR2
+                state <= STATE_CASREAD_INSTR2;
             end else begin
                 c_read_ready <= 1'b1;
                 c_busy <= 1'b0;
@@ -220,7 +223,7 @@ always @(posedge clk) begin
             ram_cmd <= CMD_READ;
             {dr_dqml, dr_dqmh} <= 2'b00;
             dr_ba <= {instruction_mode, i_addr[22]};
-            dr_a[9:0] <= {i_addr[8:1], 1'b1};
+            dr_a[9:0] <= {i_addr[8:0], 1'b1};
             dr_a[12:11] <= 1'b0;
             dr_a[10] <= 1'b1; //auto precharge
             state <= STATE_CASREAD;
@@ -229,7 +232,7 @@ always @(posedge clk) begin
             state <= STATE_IDLE; 
             ram_cmd <= CMD_NOP;
             c_data_out[31:16] <= dr_dq; // fill upper instr from pipelined request
-            state <= STATE_IDLE
+            state <= STATE_IDLE;
             c_read_ready <= 1'b1;
             c_busy <= 1'b0;
         end

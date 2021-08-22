@@ -53,7 +53,11 @@ always @(posedge clki) begin
 end
 
 reg rst = 1'b1;
+`ifdef sim
+wire cpu_rst = rst;
+`else
 wire cpu_rst = rst | ~rst_in;
+`endif
 
 always @(posedge cpu_clk) begin // hold reset at startup
 	if(|rst_cnt)
@@ -62,7 +66,7 @@ always @(posedge cpu_clk) begin // hold reset at startup
 		rst <= 1'b0;
 end
 
-wire ram_read, ram_write;
+wire ram_read, ram_write, ram_instr;
 wire [7:0] reg_leds, btinputreg, rx_data;
 wire [15:0] addr_bus, ram_in, prog_addr;
 wire [31:0] sdram_out;
@@ -74,9 +78,9 @@ reg uart_write, uart_read;
 wire sdram_busy, sdram_ready;
 reg sdram_read, sdram_write, ram_busy, ram_ready, vga_write;
 
-cpu cpu(cpu_clk, cpu_rst, addr_bus, prog_addr, ram_in, ram_out, instr_out, sdram_out, ram_busy, ram_ready, ram_read, ram_write, reg_leds, pc_leds);
+cpu cpu(cpu_clk, cpu_rst, addr_bus, prog_addr, ram_in, ram_out, instr_out, sdram_out, ram_busy, ram_ready, ram_read, ram_write, ram_instr, reg_leds, pc_leds);
 
-sdram sdram(clki, {8'b0, addr_bus-16'h4c00}, ram_in, sdram_out, sdram_read, sdram_write, sdram_busy, sdram_ready, dr_dqml, dr_dqmh, dr_cs_n, dr_cas_n, dr_ras_n, dr_we_n, dr_cke, dr_ba, dr_a, dr_dq, cpu_clk);
+sdram sdram(clki, {7'b0, addr_bus}, ram_in, sdram_out, sdram_read, sdram_write, sdram_busy, sdram_ready, dr_dqml, dr_dqmh, dr_cs_n, dr_cas_n, dr_ras_n, dr_we_n, dr_cke, dr_ba, dr_a, dr_dq, cpu_clk, ram_instr);
 
 serialout regleds(clki, reg_leds, sclk, sdata, sdatain, sdata_pl, btinputreg);
 
@@ -91,18 +95,18 @@ always @(*) begin
 	{sdram_read, sdram_write, ram_busy, vga_write, uart_write, uart_read} = 4'b0;
 	ram_ready = 1'b1;
     ram_out = 16'b0;
-	if(addr_bus ==  16'h0000) begin
+	if(addr_bus ==  16'h0000 && ~ram_instr) begin
 		//read only
 		ram_out = {8'b0, btinputreg};
-	end else if (addr_bus == 16'h0001) begin
+	end else if (addr_bus == 16'h0001 && ~ram_instr) begin
 		ram_out = {8'b0, rx_data};
 		uart_write = ram_write;
 		uart_read = ram_read;
-	end else if (addr_bus == 16'h0002) begin
+	end else if (addr_bus == 16'h0002 && ~ram_instr) begin
 		ram_out = {14'b0, tx_ready, rx_new};
-	end else if(addr_bus < 16'h1000) begin
+	end else if(addr_bus < 16'h1000 && ~ram_instr) begin
 		
-	end else if (addr_bus >= 16'h1000 && addr_bus < 16'h4c00) begin
+	end else if (addr_bus >= 16'h1000 && addr_bus < 16'h4c00 && ~ram_instr) begin
 		// vga memory write only
 		vga_write = ram_write;
 	end

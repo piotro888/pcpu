@@ -30,7 +30,7 @@ reg [2:0] rst_cnt = 3'b010;
 
 `ifndef sim
 //assign cpu_clk = clk_cnt[17]; // ~190Hz
-assign cpu_clk = clk_cnt[6]; 
+assign cpu_clk = clk_cnt[5]; 
 //assign cpu_clk = clk_cnt[24]; // ~1Hz
 `else
 assign cpu_clk = clk_cnt[2];
@@ -46,7 +46,7 @@ wire dr_clk;
 sdr sdr (dr_dq, dr_a, dr_ba, dr_clk, dr_cke, dr_cs_n, dr_ras_n, dr_cas_n, dr_we_n, {dr_dqml,dr_dqmh});
 `endif
 
-assign dr_clk = ~clki;
+assign dr_clk = ~clk_cnt[0];
 
 always @(posedge clki) begin
     clk_cnt <= clk_cnt + 1;
@@ -80,7 +80,7 @@ reg sdram_read, sdram_write, ram_busy, ram_ready, vga_write;
 
 cpu cpu(cpu_clk, cpu_rst, addr_bus, prog_addr, ram_in, ram_out, instr_out, sdram_out, ram_busy, ram_ready, ram_read, ram_write, ram_instr, ram_read_done, reg_leds, pc_leds);
 
-sdram sdram(clki, {7'b0, addr_bus}, ram_in, sdram_out, sdram_read, sdram_write, sdram_busy, sdram_ready, dr_dqml, dr_dqmh, dr_cs_n, dr_cas_n, dr_ras_n, dr_we_n, dr_cke, dr_ba, dr_a, dr_dq, cpu_clk, ram_instr);
+sdram sdram(clk_cnt[0], {7'b0, addr_bus}, ram_in, sdram_out, sdram_read, sdram_write, sdram_busy, sdram_ready, dr_dqml, dr_dqmh, dr_cs_n, dr_cas_n, dr_ras_n, dr_we_n, dr_cke, dr_ba, dr_a, dr_dq, cpu_clk, ram_instr);
 
 serialout regleds(clki, reg_leds, sclk, sdata, sdatain, sdata_pl, btinputreg);
 

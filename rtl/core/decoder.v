@@ -90,10 +90,10 @@ always @(*) begin
         7'b0000110: begin //sto
             if(mem_busy) begin
                 pc_inc          <= 1'b0;
-					 // keep addr for mem switcher
-					 alu_mode        <= 4'b1010; 
+                // keep addr for mem switcher
                 alu_r_mux_ctl   <= 1'b1;
-                reg_in_mux_ctl  <= 1'b1;
+                reg_l_ctl       <= so_reg;
+                alu_mode        <= 4'b0000;
             end else begin
                 alu_mode        <= 4'b0000;
                 alu_r_mux_ctl   <= 1'b1;

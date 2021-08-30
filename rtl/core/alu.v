@@ -20,8 +20,8 @@ always @(*) begin
         4'b0010: outc <= a_in & b_in; //AND
         4'b0011: outc <= a_in | b_in; //OR
         4'b0100: outc <= a_in ^ b_in; //XOR
-        4'b0101: outc <= a_in << b_in; //SHR
-        4'b0110: outc <= a_in >> b_in; //SHL
+        4'b0101: outc <= a_in << b_in; //SHL
+        4'b0110: outc <= a_in >> b_in; //SHR
         4'b0111: outc <= a_in * b_in; //CHECK MUL & DIV
         4'b1000: outc <= a_in / b_in;
         4'b1001: outc <= a_in; //A PASS

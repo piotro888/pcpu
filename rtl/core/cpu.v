@@ -8,7 +8,7 @@ module cpu (
     input wire [31:0] e_sdram_instr,
     input wire e_mem_busy, e_mem_ready,
 
-    output wire ram_read_out, ram_write, ram_instr_access,
+    output wire ram_read_out, ram_write, ram_instr_access, ram_read_done,
     output wire [7:0] e_reg_leds,
     output wire [3:0] e_pc_leds
 );
@@ -46,7 +46,7 @@ endgenerate
 alu alu(reg_l_bus, alu_r_mux, alu_bus, alu_mode, alu_cin, alu_flags_out, clk, alu_flags_ie);
 pc pc(alu_bus, prog_addr, clk, pc_inc & (~fetch_wait | flag_boot_mode), pc_ie | (sr_ie & instr_bus[31:16] == 16'b0), rst);
 decoder decoder(instr_bus[15:0], pc_inc, pc_ie, reg_in_mux_ctl, alu_r_mux_ctl, alu_cin,
-    ram_write, ram_read, alu_flags_ie, reg_sr_in, sr_ie, sr_pc_over, alu_mode, reg_l_ctl, reg_r_ctl, gp_reg_ie,
+    ram_write, ram_read, alu_flags_ie, reg_sr_in, sr_ie, sr_pc_over, ram_read_done, alu_mode, reg_l_ctl, reg_r_ctl, gp_reg_ie,
     e_mem_busy, e_mem_ready, alu_flags_out);
 fetch fetch(clk, e_sdram_instr, instr_bus, prog_addr, fetch_ram_read, fetch_addr_mux, e_instr, flag_boot_mode, e_mem_ready, e_mem_busy, rst, fetch_wait);
 sregs sregs(clk, sr_ie, instr_bus[31:16], alu_bus, instr_bus[6:0], flag_boot_mode, flag_instr_mem_over);

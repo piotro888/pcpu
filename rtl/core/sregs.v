@@ -9,7 +9,7 @@ module sregs(
 );
 
 reg [1:0] rt_mode = 2'b01; //#1  0-SUP 1-INA 
-reg jtr_mode = 1'b1, jtr_mode_buff; //#2 0-BLM
+reg jtr_mode = 1'b1, jtr_mode_buff = 1'b1; //#2 0-BLM
 
 always @(posedge clk) begin
     if(sr_ie) begin

@@ -30,7 +30,7 @@ reg [2:0] rst_cnt = 3'b010;
 
 `ifndef sim
 //assign cpu_clk = clk_cnt[17]; // ~190Hz
-assign cpu_clk = clk_cnt[5]; 
+assign cpu_clk = clk_cnt[6]; 
 //assign cpu_clk = clk_cnt[24]; // ~1Hz
 `else
 assign cpu_clk = clk_cnt[2];
@@ -66,7 +66,7 @@ always @(posedge cpu_clk) begin // hold reset at startup
 		rst <= 1'b0;
 end
 
-wire ram_read, ram_write, ram_instr;
+wire ram_read, ram_write, ram_instr, ram_read_done;
 wire [7:0] reg_leds, btinputreg, rx_data;
 wire [15:0] addr_bus, ram_in, prog_addr;
 wire [31:0] sdram_out;
@@ -78,7 +78,7 @@ reg uart_write, uart_read;
 wire sdram_busy, sdram_ready;
 reg sdram_read, sdram_write, ram_busy, ram_ready, vga_write;
 
-cpu cpu(cpu_clk, cpu_rst, addr_bus, prog_addr, ram_in, ram_out, instr_out, sdram_out, ram_busy, ram_ready, ram_read, ram_write, ram_instr, reg_leds, pc_leds);
+cpu cpu(cpu_clk, cpu_rst, addr_bus, prog_addr, ram_in, ram_out, instr_out, sdram_out, ram_busy, ram_ready, ram_read, ram_write, ram_instr, ram_read_done, reg_leds, pc_leds);
 
 sdram sdram(clki, {7'b0, addr_bus}, ram_in, sdram_out, sdram_read, sdram_write, sdram_busy, sdram_ready, dr_dqml, dr_dqmh, dr_cs_n, dr_cas_n, dr_ras_n, dr_we_n, dr_cke, dr_ba, dr_a, dr_dq, cpu_clk, ram_instr);
 
@@ -88,7 +88,7 @@ vga gpu(clki, cpu_clk, vsync, hsync, r, g, b, addr_bus-16'h1000, vga_write, ram_
 
 prom prom( prog_addr, ~cpu_clk, instr_out);
 
-uart uart(usb_rx, usb_tx, clki, rx_data, ram_in, rx_new, tx_ready, uart_write, uart_read);
+uart uart(usb_rx, usb_tx, clki, rx_data, ram_in[7:0], rx_new, tx_ready, uart_write, uart_read);
 
 // hw memory switching
 always @(*) begin
@@ -101,7 +101,7 @@ always @(*) begin
 	end else if (addr_bus == 16'h0001 && ~ram_instr) begin
 		ram_out = {8'b0, rx_data};
 		uart_write = ram_write;
-		uart_read = ram_read;
+		uart_read = ram_read_done; // special signal when ram_ready is set, do not emit ram_read again for sdram
 	end else if (addr_bus == 16'h0002 && ~ram_instr) begin
 		ram_out = {14'b0, tx_ready, rx_new};
 	end else if(addr_bus < 16'h1000 && ~ram_instr) begin

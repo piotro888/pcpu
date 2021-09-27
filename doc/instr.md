@@ -22,26 +22,26 @@ Instruction format is fixed for all instructions. Single instruction is 32-bit.
 |7    | ADD  | Add registers | tg <- fi + se
 |8    | ADI  | Add immediate to register | tg <- fi + imm
 |9    | ADC  | Add registers with carry  | tg <- fi + se + c
-|7    | SUB  | Substract registers | tg <- fi - se
-|9    | SUC  | Substract registers with carry  | tg <- fi - se - c
-|A    | CMP  | Compare registers  | fi - se
-|B    | CMI  | Compare register with immediate | fi - imm
-|C    | JMP  | Jump (see jump conditions)      | jump if condition [pc <- imm]
-|D    | JAL  | Jump and link | tg <- pc; pc <- imm
-|E    | SRL  | Load from special register | tg <- sr[addr]
-|F    | SRS  | Store to special register | sr[addr] <- sr
-|10   |  -   | Reserved for syscall | -
-|11   | AND  | And registers | tg <- fi & se
-|12   | ORR  | Or registers | tg <- fi \| se
-|13   | XOR  | Xor registers | tg <- fi ^ se
-|14   | ANI  | And register with immediate | tg <- fi & imm
-|15   | ORI  | Or register with immediate | tg <- fi \| imm
-|16   | XOI  | Xor register with immediate | tg <- fi ^ imm
-|17   | SHL  | Bit shift left | tg <- fi >> se
-|18   | SHR  | Bit shift right | tg <- fi << se
-|19   | CAI  | And-compare with immediate | fi & se
-|1A   | MUL  | Unsigned multiply | tg <- fi * se
-|1B   | DIV  | Unsigned division | tg <- fi / se
+|A    | SUB  | Substract registers | tg <- fi - se
+|B    | SUC  | Substract registers with carry  | tg <- fi - se - c
+|C    | CMP  | Compare registers  | fi - se
+|D    | CMI  | Compare register with immediate | fi - imm
+|E    | JMP  | Jump (see jump conditions)      | jump if condition [pc <- imm]
+|F    | JAL  | Jump and link | tg <- pc; pc <- imm
+|10   | SRL  | Load from special register | tg <- sr[addr]
+|11   | SRS  | Store to special register | sr[addr] <- sr
+|12   |  -   | Reserved for syscall | -
+|13   | AND  | And registers | tg <- fi & se
+|14   | ORR  | Or registers | tg <- fi \| se
+|15   | XOR  | Xor registers | tg <- fi ^ se
+|16   | ANI  | And register with immediate | tg <- fi & imm
+|17   | ORI  | Or register with immediate | tg <- fi \| imm
+|18   | XOI  | Xor register with immediate | tg <- fi ^ imm
+|19   | SHL  | Bit shift left | tg <- fi >> se
+|1A   | SHR  | Bit shift right | tg <- fi << se
+|1B   | CAI  | And-compare with immediate | fi & se
+|1C   | MUL  | Unsigned multiply | tg <- fi * se
+|1D   | DIV  | Unsigned division | tg <- fi / se
 
 ## Jump modes
 

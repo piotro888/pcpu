@@ -57,25 +57,27 @@ always @(posedge pclk) begin
 		g = 3'b000;
 		b = 2'b00;
 	end else if(vga_config[3:0] == 4'b0001) begin // text mode [106x48] (char 6*10)
-		char_bit = x_char_pos + y_char_pos*6;
-		if(char_rom_out[char_bit]) begin
-			r = qb[8] ? (qb[11] ?  3'b111 :3'b011) : 3'b000;
-			g = qb[9] ? (qb[11] ?  3'b111 :3'b011) : 3'b000;
-			b = qb[10] ? (qb[11] ?  2'b11 :2'b10) : 2'b00;
+		if(hcnt < 636) begin // skip 107th char (cropped)
+			char_bit = x_char_pos + y_char_pos*6;
+			if(char_rom_out[char_bit]) begin
+				r = qb[8] ? (qb[11] ?  3'b111 :3'b011) : 3'b000;
+				g = qb[9] ? (qb[11] ?  3'b111 :3'b011) : 3'b000;
+				b = qb[10] ? (qb[11] ?  2'b11 :2'b10) : 2'b00;
+			end else begin
+				r = qb[12] ? (qb[15] ?  3'b111 :3'b011) : 3'b000;
+				g = qb[13] ? (qb[15] ?  3'b111 :3'b011) : 3'b000;
+				b = qb[14] ? (qb[15] ?  2'b11 :2'b10) : 2'b000;
+			end
+			if(x_char_pos == 5) begin
+				addrb = addrb+1;
+				x_char_pos = 0;
+			end else 
+				x_char_pos = x_char_pos+1;
 		end else begin
-			r = qb[12] ? (qb[15] ?  3'b111 :3'b011) : 3'b000;
-			g = qb[13] ? (qb[15] ?  3'b111 :3'b011) : 3'b000;
-			b = qb[14] ? (qb[15] ?  2'b11 :2'b10) : 2'b000;
+			r = 3'b000;
+			g = 3'b000;
+			b = 2'b00;
 		end
-		if(char_bit == 6)begin
-			r=3'b00;
-			g=3'b11;
-		end
-		if(x_char_pos == 5) begin
-			addrb = addrb+1;
-			x_char_pos = 0;
-		end else 
-			x_char_pos = x_char_pos+1;
 	end else begin // 8-bit color 160x120
 		if(hcnt[2]) begin 
 			r = qb[10:8];

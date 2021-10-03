@@ -137,7 +137,10 @@ always @(posedge clk) begin
                 i_addr <= c_addr;
                 i_data_in <= c_data_in;
                 dr_ba <= {instruction_mode, c_addr[22]}; // lower max ram addr and set banks to msb???
-                dr_a <= c_addr[21:9];
+                if(instruction_mode)
+                    dr_a <= c_addr[20:8]; // read instr addresses are shifted by 1
+                else
+                    dr_a <= c_addr[21:9];
                 state <= STATE_WAIT;
                 wait_next_state <= STATE_READ;
                 wait_reg <= 16'd1;
@@ -195,7 +198,9 @@ always @(posedge clk) begin
             //don't use burst but two subseq reads for instr
             dr_ba <= {instruction_mode, i_addr[22]};
             if(l_instruction_mode) begin
-                dr_a[9:0] <= {i_addr[8:0], 1'b0};
+                //!!!! addr bit 9 is out of range for coulumn address
+                dr_a[8:0] <= {i_addr[7:0], 1'b0};
+                dr_a[9] <= 1'b0;
                 dr_a[12:11] <= 1'b0;
                 dr_a[10] <= 1'b0; //disable auto precharge for second read
                 state <= STATE_READ_INSTR2;
@@ -223,7 +228,8 @@ always @(posedge clk) begin
             ram_cmd <= CMD_READ;
             {dr_dqml, dr_dqmh} <= 2'b00;
             dr_ba <= {instruction_mode, i_addr[22]};
-            dr_a[9:0] <= {i_addr[8:0], 1'b1};
+            dr_a[8:0] <= {i_addr[7:0], 1'b1};
+            dr_a[9] <= 1'b0; // column addr width [8:0]
             dr_a[12:11] <= 1'b0;
             dr_a[10] <= 1'b1; //auto precharge
             state <= STATE_CASREAD;

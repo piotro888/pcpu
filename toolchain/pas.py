@@ -23,6 +23,7 @@ line = 0
 line_nr = 0
 filen = ''
 error_cnt = 0
+oformat = 0
 
 def compileAll():
     global romaddr, ramaddr
@@ -41,25 +42,49 @@ def compileAll():
     printv("DONE")
     printv(generated)
     printv("Writing files")
-
+    for label in labels:
+        print(label, labels[label])
+    for label in addralias:
+        print(label, addralias[label])
     output_file = open(output_path, "wt")
-
+    cs=0
     if error_cnt == 0:
-        for addro, val in generated.items():
-            addr = hex(addro)[2:].zfill(4)
-            data = hex(val)[2:].zfill(8)
-            hexentry = f':04{addr}00{data}'
-            check = 0
-            for i in range(0, len(hexentry[1:])-1, 2):
-                check = check + int(hexentry[i+1:i+3], 16)
-            check = check % 256
-            check = 256 - check
-            hexentry = hexentry + (hex(check)[2:][-2:]).zfill(2) + '\n'
-            hexentry = hexentry.upper()
-            printv(hexentry[:-1])
-            output_file.write(hexentry)
-        output_file.write(':00000001FF\n')
-
+        if(oformat == 0):
+            for addro, val in generated.items():
+                addr = hex(addro)[2:].zfill(4)
+                data = hex(val)[2:].zfill(8)
+                cs+=val&0xFFFF
+                cs+=(val>>16)
+                cs=cs%65536
+                hexentry = f':04{addr}00{data}'
+                check = 0
+                for i in range(0, len(hexentry[1:])-1, 2):
+                    check = check + int(hexentry[i+1:i+3], 16)
+                check = check % 256
+                check = 256 - check
+                hexentry = hexentry + (hex(check)[2:][-2:]).zfill(2) + '\n'
+                hexentry = hexentry.upper()
+                printv(hexentry[:-1])
+                output_file.write(hexentry)
+            output_file.write(':00000001FF\n')
+        else:
+            output_file.write('*')
+            for addro, val in generated.items():
+                data = hex(val)[2:].zfill(8)
+                output_file.write(data)
+                cs+=val&0xFFFF
+                cs+=(val>>16)
+                cs=cs%65536
+            output_file.write(hex((65536-cs)%65536)[2:].zfill(8))
+            output_file.write('*')
+            if len(initinfo) > 0:
+                lastinitaddr = max(initinfo)
+                for addr in range(0x4c00, lastinitaddr+1):
+                    if addr in initinfo:
+                        output_file.write(hex(initinfo[addr])[2:].zfill(4))
+                    else:
+                        output_file.write("0000")
+            output_file.write('*')
     if error_cnt == 0:
         print('\033[0;32m[RESULT]\033[m Compilation finished successfully!')
         exitcode = 0
@@ -123,19 +148,21 @@ def compileFileFirstRun(input_path):
                     printe("Excepted > 1 arguments")
                 else:
                     addralias[tokens[1]] = romaddr
-                    parse_dd(tokens[2:], True)
+                    parse_dd(stringTokenizer(line)[2:], True)
             elif(line.find('.init') != -1):
                 if len(tokens) < 2:
                     printe("Excepted > 1 arguments")
                 else:
                     addralias[tokens[1]] = ramaddr
-                    parse_dd(tokens[2:], False)
+                    parse_dd(stringTokenizer(line)[2:], False)
             elif(line.find('.defc') != -1):
                 if len(tokens) != 3:
                     printe('Expected 2 arguments')
                 else:
                     macros[tokens[1]] = get_number(tokens[2])
                     printv(macros)
+            elif(line.find('.export') != -1):
+                pass
             else:
                 printe('Invalid parameter')
 
@@ -214,7 +241,8 @@ def compileFileSecondRun(input_path):
                             else:
                                 resolvaddr = addralias[addr]
                         if resolvaddr > 65535 or resolvaddr < 0:
-                                printe('16 bit overflow')
+                                #printe('16 bit overflow')
+                                pass
                         printv(f'Resolved address {resolvaddr}')
                         cinstr = cinstr | ((resolvaddr&65535)<<16)
                         tokenpos = tokenpos+1
@@ -223,6 +251,10 @@ def compileFileSecondRun(input_path):
                         printv(macros)
                         if tokens[tokenpos] in macros:
                             num = macros[tokens[tokenpos]]
+                        elif tokens[tokenpos] in addralias:
+                            num = addralias[tokens[tokenpos]]
+                        elif tokens[tokenpos] in labels:
+                            num = labels[tokens[tokenpos]]
                         else:
                             num = get_number(tokens[tokenpos])
                         cinstr = cinstr | ((num&65535)<<16)
@@ -248,9 +280,9 @@ def compileFileSecondRun(input_path):
             elif(line.find('.global') != -1):
                 ramaddr = ramaddr + get_number(tokens[2])
             elif(line.find('.rod') != -1):
-                parse_dd(tokens[2:], True)
+                parse_dd(stringTokenizer(line)[2:], True)
             elif(line.find('.init') != -1):
-                parse_dd(tokens[2:], False)
+                parse_dd(stringTokenizer(line)[2:], False)
             elif(line.find('.romd') != -1):
                 seg = segment.ROMD
             elif(line.find('.ramd') != -1):
@@ -269,6 +301,10 @@ def compileFileSecondRun(input_path):
 def tokenize(line):
     return re.split(', | |,', line)
 
+def stringTokenizer(line):
+    printv(re.findall('[^\s,"]+|".+?"', line))
+    return re.findall('[^\s,"]+|".+?"', line)
+
 def getreg(rs):
     if(rs[0] != 'r'):
         printe('Invalid register')
@@ -284,6 +320,11 @@ def getreg(rs):
 
 def get_number(num):
     base = 10
+    neg = 0
+    if num[0] == '-':
+        num = num[1:]
+        neg = 1
+    
     if len(num) >= 3 and num[0] == '0':
         if num[1] == 'x':
             base=16
@@ -295,6 +336,8 @@ def get_number(num):
             num_int = int(num, base)
         else:
             num_int = int(num[2:], base)
+        if neg:
+            num_int *= -1
         return num_int
     except:
         printe(f'Number {num} is not valid')
@@ -351,7 +394,7 @@ verbose = 0
 
 def parseArgs():
     args = sys.argv
-    global output_path, verbose
+    global output_path, verbose, oformat
     output_path = ''
     
     for i, arg in enumerate(args):
@@ -366,6 +409,8 @@ def parseArgs():
             output_path = args[i+1]
         elif arg == "-v":
             verbose = 1
+        elif arg == "-b":
+            oformat = 1
         else:
             input_paths.append(arg)
         if output_path == '':
@@ -411,8 +456,8 @@ def initInstructions():
     instructions['ani'] = Instruction('ani', 0x16, 1, 1, 0, 3)
     instructions['ori'] = Instruction('ori', 0x17, 1, 1, 0, 3)
     instructions['xoi'] = Instruction('xoi', 0x18, 1, 1, 0, 3)
-    instructions['shr'] = Instruction('shr', 0x19, 1, 1, 1, 0)
-    instructions['shl'] = Instruction('shl', 0x1A, 1, 1, 1, 0)
+    instructions['shr'] = Instruction('shr', 0x1A, 1, 1, 1, 0)
+    instructions['shl'] = Instruction('shl', 0x19, 1, 1, 1, 0)
     instructions['cai'] = Instruction('cai', 0x1B, 0, 1, 0, 3)
     instructions['mul'] = Instruction('mul', 0x1C, 1, 1, 1, 0)
     instructions['div'] = Instruction('div', 0x1D, 1, 1, 1, 0)
@@ -459,7 +504,7 @@ class segment (Enum):
 
 def welcome():
     print("[INFO] pas - pcpu v2 assembler ")
-    print("[INFO] Version 1.4 by Piotr Węgrzyn\n")
+    print("[INFO] Version 1.5 by Piotr Węgrzyn\n")
 
 def help():
     pass

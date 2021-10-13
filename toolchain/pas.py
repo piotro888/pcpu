@@ -211,7 +211,7 @@ def compileFileSecondRun(input_path):
                     if instr.pr0 == 1:
                         cinstr = cinstr | (getreg(tokens[tokenpos])<<7)
                         tokenpos = tokenpos+1
-                    if instr.pvjs != 1:
+                    if instr.pvjs != 0:
                         cinstr = cinstr | (instr.pvjs<<7)
                     if instr.pr1 == 1:
                         cinstr = cinstr | (getreg(tokens[tokenpos])<<10)
@@ -347,7 +347,8 @@ def parse_dd(tokens, rom):
     global generated, romaddr, initinfo, ramaddr
     for token in tokens:
         if token[0] == "\"" and token[-1:] == "\"":
-            for c in token[1:-1]:
+            sbytes = bytes(token[1:-1], "ascii").decode("unicode_escape")
+            for c in sbytes:
                 if rom:
                     generated[romaddr] = ord(c)
                     printv(f"OMem {romaddr}={ord(c)}")

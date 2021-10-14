@@ -30,7 +30,9 @@ wire [15:0] prog_addr, spec_reg_out;
 wire pc_inc, pc_ie, reg_in_mux_ctl, alu_r_mux_ctl, alu_cin, alu_flags_ie, reg_sr_in, sr_ie, sr_pc_over, ram_read;
 wire [3:0] alu_mode, reg_l_ctl, reg_r_ctl;
 wire [7:0] gp_reg_ie;
-wire fetch_ram_read, fetch_addr_mux, fetch_wait;
+wire [15:0] fetch_predict_pc;
+wire [1:0]  fetch_addr_mux;
+wire fetch_ram_read, fetch_wait;
 wire flag_boot_mode, flag_instr_mem_over;
 
 // REGISTERS r0..r7
@@ -48,7 +50,7 @@ pc pc(alu_bus, prog_addr, clk, pc_inc & (~fetch_wait | flag_boot_mode), pc_ie | 
 decoder decoder(instr_bus[15:0], pc_inc, pc_ie, reg_in_mux_ctl, alu_r_mux_ctl, alu_cin,
     ram_write, ram_read, alu_flags_ie, reg_sr_in, sr_ie, sr_pc_over, ram_read_done, alu_mode, reg_l_ctl, reg_r_ctl, gp_reg_ie,
     e_mem_busy, e_mem_ready, alu_flags_out);
-fetch fetch(clk, e_sdram_instr, instr_bus, prog_addr, fetch_ram_read, fetch_addr_mux, e_instr, flag_boot_mode, e_mem_ready, e_mem_busy, rst, fetch_wait);
+fetch fetch(clk, e_sdram_instr, instr_bus, prog_addr, fetch_ram_read, fetch_addr_mux, e_instr, flag_boot_mode, e_mem_ready, e_mem_busy, rst, fetch_wait, fetch_predict_pc);
 sregs sregs(clk, rst, sr_ie, instr_bus[31:16], alu_bus, instr_bus[6:0], flag_boot_mode, flag_instr_mem_over);
 
 // MUXES DEFINITIONS
@@ -57,7 +59,7 @@ assign alu_r_mux = (alu_r_mux_ctl ? instr_bus[31:16] : reg_r_bus);
 assign reg_l_bus = gp_reg_out[reg_l_ctl];
 assign reg_r_bus = gp_reg_out[reg_r_ctl];
 assign spec_reg_out = ((instr_bus[31:16] == 16'b0 || sr_pc_over) ? prog_addr : 16'b0);
-assign e_addr_bus = (fetch_addr_mux ? prog_addr : alu_bus);
+assign e_addr_bus = (fetch_addr_mux[1] ? fetch_predict_pc : (fetch_addr_mux[0] ? prog_addr : alu_bus));
 
 // EXTERNAL CONNECTIONS
 assign e_prog_addr = prog_addr;

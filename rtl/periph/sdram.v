@@ -5,7 +5,7 @@ module sdram (
     input wire [15:0] c_data_in,
     output reg [31:0] c_data_out,
     input wire c_read_req, c_write_req,
-    output reg c_busy, c_read_ready, c_cack
+    output reg c_busy, c_read_ready, c_cack,
     // SDRAM
     output reg dr_dqml, dr_dqmh,
     output wire dr_cs_n, dr_cas_n, dr_ras_n, dr_we_n, dr_cke,
@@ -63,10 +63,8 @@ reg [15:0] i_data_in;
 
 reg sync_xory_read = 1'b0;
 always @(posedge srclk) begin
-    c_cack <= 1'b0;
 	if(c_read_req & ~c_busy) begin
 		sync_xory_read <= sync_xory_read^1;
-        c_cack <= 1'b1;
     end
 end
 reg sync_x_read_done = 1'b0;
@@ -74,10 +72,15 @@ wire pulse_c_read = (sync_xory_read ^ sync_x_read_done) & ~c_read_ready;
 
 reg sync_xory_write = 1'b0;
 always @(posedge srclk) begin
-    c_cack <= 1'b0;
 	if(c_write_req & ~c_busy) begin
 		sync_xory_write <= sync_xory_write^1;
-        c_ack <= 1'b1;
+    end
+end
+
+always @(posedge srclk) begin
+    c_cack <= 1'b0;
+    if((c_read_req & ~c_busy) | (c_write_req & ~c_busy)) begin
+        c_cack <= 1'b1;
     end
 end
 reg sync_x_write_done = 1'b0;

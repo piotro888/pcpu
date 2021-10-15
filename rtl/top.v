@@ -30,7 +30,7 @@ reg [2:0] rst_cnt = 3'b010;
 
 `ifndef sim
 //assign cpu_clk = clk_cnt[17]; // ~190Hz
-assign cpu_clk = clk_cnt[5]; 
+assign cpu_clk = clk_cnt[4];
 //assign cpu_clk = clk_cnt[24]; // ~1Hz
 `else
 assign cpu_clk = clk_cnt[2];
@@ -76,9 +76,9 @@ wire rx_new, tx_ready;
 reg uart_write, uart_read;
 
 wire sdram_busy, sdram_ready, sdram_cack;
-reg sdram_read, sdram_write, ram_busy, ram_ready, vga_write;
+reg sdram_read, sdram_write, ram_busy, ram_ready, vga_write, ram_cack;
 
-cpu cpu(cpu_clk, cpu_rst, addr_bus, prog_addr, ram_in, ram_out, instr_out, sdram_out, ram_busy, ram_ready,  ram_cack, ram_read, ram_write, ram_instr, ram_read_done, reg_leds, pc_leds);
+cpu cpu(cpu_clk, cpu_rst, addr_bus, prog_addr, ram_in, ram_out, instr_out, sdram_out, ram_busy, ram_ready, sdram_cack, ram_read, ram_write, ram_instr, ram_read_done, reg_leds, pc_leds);
 
 sdram sdram(clk_cnt[0], {7'b0, addr_bus}, ram_in, sdram_out, sdram_read, sdram_write, sdram_busy, sdram_ready, sdram_cack, dr_dqml, dr_dqmh, dr_cs_n, dr_cas_n, dr_ras_n, dr_we_n, dr_cke, dr_ba, dr_a, dr_dq, cpu_clk, ram_instr);
 

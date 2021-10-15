@@ -6,7 +6,7 @@ module cpu (
     input wire [15:0] e_mem_bus, 
     input wire [31:0] e_instr,
     input wire [31:0] e_sdram_instr,
-    input wire e_mem_busy, e_mem_ready,
+    input wire e_mem_busy, e_mem_ready, e_ram_cack,
 
     output wire ram_read_out, ram_write, ram_instr_access, ram_read_done,
     output wire [7:0] e_reg_leds,

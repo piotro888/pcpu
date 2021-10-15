@@ -50,7 +50,7 @@ pc pc(alu_bus, prog_addr, clk, pc_inc & (~fetch_wait | flag_boot_mode), (pc_ie |
 decoder decoder(instr_bus[15:0], pc_inc, pc_ie, reg_in_mux_ctl, alu_r_mux_ctl, alu_cin,
     ram_write, ram_read, alu_flags_ie, reg_sr_in, sr_ie, sr_pc_over, ram_read_done, alu_mode, reg_l_ctl, reg_r_ctl, gp_reg_ie,
     e_mem_busy, e_mem_ready, alu_flags_out);
-fetch fetch(clk, prog_addr, e_sdram_instr, e_mem_busy, e_mem_cack, e_mem_ready, fetch_ram_read, fetch_instr_bus, fetch_addr, fetch_addr_mux, fetch_wait, flag_boot_mode);
+fetch fetch(clk, prog_addr, e_sdram_instr, e_mem_busy, e_mem_cack, e_mem_ready, fetch_ram_read, fetch_instr_bus, fetch_addr, fetch_addr_mux, fetch_wait, flag_boot_mode, rst);
 sregs sregs(clk, rst, sr_ie, instr_bus[31:16], alu_bus, instr_bus[6:0], flag_boot_mode, flag_instr_mem_over);
 
 // MUXES DEFINITIONS

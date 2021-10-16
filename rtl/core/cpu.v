@@ -7,6 +7,7 @@ module cpu (
     input wire [31:0] e_instr,
     input wire [31:0] e_sdram_instr,
     input wire e_mem_busy, e_mem_ready, e_mem_cack,
+    input wire irq_in,
 
     output wire ram_read_out, ram_write, ram_instr_access, ram_read_done,
     output wire [7:0] e_reg_leds,
@@ -21,6 +22,7 @@ wire [31:0] instr_bus;
 // MUXES
 wire [15:0] reg_in_mux;
 wire [15:0] alu_r_mux;
+wire [15:0] spec_reg_out_mod;
 
 // CONNECTS
 wire [5:0] alu_flags_out;
@@ -32,7 +34,7 @@ wire [31:0] fetch_instr_bus;
 wire pc_inc, pc_ie, reg_in_mux_ctl, alu_r_mux_ctl, alu_cin, alu_flags_ie, reg_sr_in, sr_ie, sr_pc_over, ram_read;
 wire [3:0] alu_mode, reg_l_ctl, reg_r_ctl;
 wire [7:0] gp_reg_ie;
-wire fetch_ram_read, fetch_wait, fetch_addr_mux;
+wire fetch_ram_read, fetch_wait, fetch_addr_mux, irq_p;
 wire flag_boot_mode, flag_instr_mem_over;
 
 // REGISTERS r0..r7
@@ -46,19 +48,19 @@ endgenerate
 
 // BLOCK ELEMENTS
 alu alu(reg_l_bus, alu_r_mux, alu_bus, alu_mode, alu_cin, alu_flags_out, clk, alu_flags_ie);
-pc pc(alu_bus, prog_addr, clk, pc_inc & (~fetch_wait | flag_boot_mode), (pc_ie | (sr_ie & instr_bus[31:16] == 16'b0)) & (~fetch_wait | flag_boot_mode), rst);
+pc pc(alu_bus, prog_addr, clk, pc_inc & (~fetch_wait | flag_boot_mode), (pc_ie | (sr_ie & instr_bus[31:16] == 16'b0)) & (~fetch_wait | flag_boot_mode), irq_p, rst);
 decoder decoder(instr_bus[15:0], pc_inc, pc_ie, reg_in_mux_ctl, alu_r_mux_ctl, alu_cin,
     ram_write, ram_read, alu_flags_ie, reg_sr_in, sr_ie, sr_pc_over, ram_read_done, alu_mode, reg_l_ctl, reg_r_ctl, gp_reg_ie,
     e_mem_busy, e_mem_ready, alu_flags_out);
-fetch fetch(clk, prog_addr, e_sdram_instr, e_mem_busy, e_mem_cack, e_mem_ready, fetch_ram_read, fetch_instr_bus, fetch_addr, fetch_addr_mux, fetch_wait, flag_boot_mode, rst);
-sregs sregs(clk, rst, sr_ie, instr_bus[31:16], alu_bus, instr_bus[6:0], flag_boot_mode, flag_instr_mem_over);
+fetch fetch(clk, prog_addr, e_sdram_instr, e_mem_busy, e_mem_cack, e_mem_ready, fetch_ram_read, fetch_instr_bus, fetch_addr, fetch_addr_mux, fetch_wait, flag_boot_mode, rst, irq_in, irq_p);
+sregs sregs(clk, rst, sr_ie, instr_bus[31:16], alu_bus, instr_bus[6:0], spec_reg_out_mod, flag_boot_mode, flag_instr_mem_over, irq_p, prog_addr);
 
 // MUXES DEFINITIONS
 assign reg_in_mux = (reg_in_mux_ctl | reg_sr_in ? (reg_sr_in ? spec_reg_out : mem_bus) : alu_bus);
 assign alu_r_mux = (alu_r_mux_ctl ? instr_bus[31:16] : reg_r_bus);
 assign reg_l_bus = gp_reg_out[reg_l_ctl];
 assign reg_r_bus = gp_reg_out[reg_r_ctl];
-assign spec_reg_out = ((instr_bus[31:16] == 16'b0 || sr_pc_over) ? prog_addr : 16'b0);
+assign spec_reg_out = ((instr_bus[31:16] == 16'b0 || sr_pc_over) ? prog_addr : spec_reg_out_mod);
 assign e_addr_bus = (fetch_addr_mux ? fetch_addr : alu_bus);
 assign instr_bus = (flag_boot_mode ? e_instr : fetch_instr_bus);
 

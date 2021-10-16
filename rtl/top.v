@@ -10,7 +10,8 @@ module top (
 	output wire sdata_pl,
 	input wire rst_in,
 	input wire usb_rx,
-	output wire usb_tx
+	output wire usb_tx,
+	input wire irq
 	
 	`ifndef sim
 	,
@@ -78,7 +79,7 @@ reg uart_write, uart_read;
 wire sdram_busy, sdram_ready, sdram_cack;
 reg sdram_read, sdram_write, ram_busy, ram_ready, vga_write, ram_cack;
 
-cpu cpu(cpu_clk, cpu_rst, addr_bus, prog_addr, ram_in, ram_out, instr_out, sdram_out, ram_busy, ram_ready, sdram_cack, ram_read, ram_write, ram_instr, ram_read_done, reg_leds, pc_leds);
+cpu cpu(cpu_clk, cpu_rst, addr_bus, prog_addr, ram_in, ram_out, instr_out, sdram_out, ram_busy, ram_ready, sdram_cack, irq, ram_read, ram_write, ram_instr, ram_read_done, reg_leds, pc_leds);
 
 sdram sdram(clk_cnt[0], {7'b0, addr_bus}, ram_in, sdram_out, sdram_read, sdram_write, sdram_busy, sdram_ready, sdram_cack, dr_dqml, dr_dqmh, dr_cs_n, dr_cas_n, dr_ras_n, dr_we_n, dr_cke, dr_ba, dr_a, dr_dq, cpu_clk, ram_instr);
 

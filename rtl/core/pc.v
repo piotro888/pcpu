@@ -1,7 +1,7 @@
 module pc (
     input wire [15:0] in,
     output reg [15:0] out,
-    input wire clk, inc, ie, rst
+    input wire clk, inc, ie, irq, rst
 );
 
 wire [15:0] inmux;
@@ -17,6 +17,9 @@ always @(posedge clk, posedge rst) begin
 
         if (inc)
             out = out + 16'b1;
+
+        if (irq & (ie | inc))
+            out = 16'b1;
     end
 end
 

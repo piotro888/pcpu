@@ -9,13 +9,16 @@ module fetch(
     output reg ram_addr_ovr,
     output reg pc_hold,
     input wire flag_boot_mode,
-    input wire rst
+    input wire rst,
+    input wire irq_in,
+    output reg irq_p
 );
 
 reg [1:0] state;
 reg c_acked;
 reg [15:0] prev_pc;
 reg [31:0] pref_instr;
+reg prev_irq;
 
 initial  state = 2'b0;
 initial ram_read = 1'b0;
@@ -38,6 +41,7 @@ always @(negedge clk) begin
         state <= 2'b0;
         prev_pc <= 16'hFFFF;
         c_acked <= 1'b0;
+        irq_p <= 1'b0;
     end else if(~flag_boot_mode) begin
         if(pc_in != prev_pc) begin
             pc_hold <= 1'b1;
@@ -153,7 +157,17 @@ always @(negedge clk) begin
                 end
             end
         endcase
+    end
+    
+    if (~rst) begin
+        if(irq_in != prev_irq && irq_in == 1'b1)
+            irq_p <= 1'b1;
+
+        if(pc_in == 16'b1 && irq_p)
+            irq_p <= 1'b0;
+
         prev_pc <= pc_in;
+        prev_irq <= irq_in;
     end
 end
 

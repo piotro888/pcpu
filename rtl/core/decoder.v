@@ -80,6 +80,7 @@ always @(*) begin
 					 // keep addr for mem switcher
 					 alu_mode        <= 4'b1010;
                 alu_r_mux_ctl   <= 1'b1;
+                reg_r_ctl       <= fo_reg;
             end else begin
                 alu_mode        <= 4'b1010;
                 alu_r_mux_ctl   <= 1'b1;
@@ -94,6 +95,7 @@ always @(*) begin
                 alu_r_mux_ctl   <= 1'b1;
                 reg_l_ctl       <= so_reg;
                 alu_mode        <= 4'b0000;
+                reg_r_ctl       <= fo_reg;
             end else begin
                 alu_mode        <= 4'b0000;
                 alu_r_mux_ctl   <= 1'b1;

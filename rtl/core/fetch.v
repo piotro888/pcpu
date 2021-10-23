@@ -10,7 +10,7 @@ module fetch(
     output reg pc_hold,
     input wire flag_boot_mode,
     input wire rst,
-    input wire irq_in,
+    input wire irq_in, irq_en,
     output reg irq_p
 );
 
@@ -50,7 +50,7 @@ always @(negedge clk) begin
 
         case(state)
             2'b0: begin  // IDLE STATE
-                if((pc_in != prev_pc || pc_hold)) begin // if pc change fetch new instr
+                if((pc_in != prev_pc || pc_hold) && ~ram_busy) begin // if pc change fetch new instr
                     ram_read <= 1'b1;
                     ram_addr_ovr <= 1'b1;
                     ram_addr <= pc_in; // fetch instruction pc pointing to
@@ -160,7 +160,7 @@ always @(negedge clk) begin
     end
     
     if (~rst) begin
-        if(irq_in != prev_irq && irq_in == 1'b1)
+        if(irq_in != prev_irq && irq_in == 1'b1 && irq_en)
             irq_p <= 1'b1;
 
         if(pc_in == 16'b1 && irq_p)

@@ -462,6 +462,7 @@ def initInstructions():
     instructions['cai'] = Instruction('cai', 0x1B, 0, 1, 0, 3)
     instructions['mul'] = Instruction('mul', 0x1C, 1, 1, 1, 0)
     instructions['div'] = Instruction('div', 0x1D, 1, 1, 1, 0)
+    instructions['irt'] = Instruction('irt', 0x1E, 0, 0, 0, 0)
     # instructions['plo'] = Instruction('plo', 0x1D, 1, 1, 0, 2)
     instructions['hlt'] = Instruction('hlt', 0x2F, 0, 0, 0, 0)
 

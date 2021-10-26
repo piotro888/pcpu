@@ -13,7 +13,10 @@ module sregs(
     input wire irq_in,
     input wire [15:0] pc_in,
     output wire irq_en,
-    input wire out_addr_ovr, pc_ie, pc_inc
+    input wire out_addr_ovr, pc_ie, pc_inc,
+    input wire [4:0] alu_flags_in,
+    output reg [4:0] alu_flags,
+    input wire alu_flags_ie
 );
 
 reg [2:0] rt_mode = 3'b001; //#1  0-SUP 1-INA 2-IRQEN
@@ -25,7 +28,8 @@ always @(posedge clk, posedge rst) begin
     if(rst) begin
         rt_mode <= 3'b001;
         jtr_mode <= 1'b1; jtr_mode_buff <= 1'b1; 
-        prev_irq <= 1'b0;
+        prev_irq <= 1'b0; irq_pc <= 16'b0;
+        alu_flags <= 5'b0;
     end else begin
         if(sr_ie) begin
             case(sr_sel)
@@ -38,6 +42,8 @@ always @(posedge clk, posedge rst) begin
                     jtr_mode_buff <= sr_in[0];
                 16'b11:
                     irq_pc <= sr_in;
+                16'b100:
+                    alu_flags <= sr_in[4:0];
             endcase        
         end
 
@@ -67,6 +73,9 @@ always @(posedge clk, posedge rst) begin
             // other values must be saved immediately
             rt_mode[2] <= 1'b0; 
         end
+
+        if(alu_flags_ie)
+            alu_flags <= alu_flags_in;
     end
     prev_irq <= irq_in;
 end
@@ -79,6 +88,7 @@ always @(*) begin
     if(~out_addr_ovr) begin
         case (sr_sel)
             16'b11: sr_out = irq_pc;
+            16'b100: sr_out = alu_flags;
             default: sr_out = 16'b0;
         endcase
     end else begin

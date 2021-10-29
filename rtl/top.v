@@ -11,7 +11,8 @@ module top (
 	input wire rst_in,
 	input wire usb_rx,
 	output wire usb_tx,
-	input wire irq
+	input wire irq,
+	input wire ps2_clk, ps2_data
 	
 	`ifndef sim
 	,
@@ -67,8 +68,8 @@ always @(posedge cpu_clk) begin // hold reset at startup
 		rst <= 1'b0;
 end
 
-wire ram_read, ram_write, ram_instr, ram_read_done;
-wire [7:0] reg_leds, btinputreg, rx_data;
+wire ram_read, ram_write, ram_instr, ram_read_done, key_irq;
+wire [7:0] reg_leds, btinputreg, rx_data, ps2_scancode;
 wire [15:0] addr_bus, ram_in, prog_addr;
 wire [31:0] sdram_out;
 reg [15:0] ram_out;
@@ -79,7 +80,7 @@ reg uart_write, uart_read;
 wire sdram_busy, sdram_ready, sdram_cack;
 reg sdram_read, sdram_write, ram_busy, ram_ready, vga_write, ram_cack;
 
-cpu cpu(cpu_clk, cpu_rst, addr_bus, prog_addr, ram_in, ram_out, instr_out, sdram_out, ram_busy, ram_ready, sdram_cack, irq, ram_read, ram_write, ram_instr, ram_read_done, reg_leds, pc_leds);
+cpu cpu(cpu_clk, cpu_rst, addr_bus, prog_addr, ram_in, ram_out, instr_out, sdram_out, ram_busy, ram_ready, sdram_cack, key_irq, ram_read, ram_write, ram_instr, ram_read_done, reg_leds, pc_leds);
 
 sdram sdram(clk_cnt[0], {7'b0, addr_bus}, ram_in, sdram_out, sdram_read, sdram_write, sdram_busy, sdram_ready, sdram_cack, dr_dqml, dr_dqmh, dr_cs_n, dr_cas_n, dr_ras_n, dr_we_n, dr_cke, dr_ba, dr_a, dr_dq, cpu_clk, ram_instr);
 
@@ -90,6 +91,8 @@ vga gpu(clki, cpu_clk, vsync, hsync, r, g, b, addr_bus-16'h1000, vga_write, ram_
 prom prom( prog_addr, ~cpu_clk, instr_out);
 
 uart uart(usb_rx, usb_tx, clki, rx_data, ram_in[7:0], rx_new, tx_ready, uart_write, uart_read);
+
+ps_keyboard ps2k(ps2_clk, ps2_data, ps2_scancode, clki, cpu_clk, key_irq);
 
 // hw memory switching
 always @(*) begin
@@ -105,6 +108,8 @@ always @(*) begin
 		uart_read = ram_read_done; // special signal when ram_ready is set, do not emit ram_read again for sdram
 	end else if (addr_bus == 16'h0002 && ~ram_instr) begin
 		ram_out = {14'b0, tx_ready, rx_new};
+	end else if (addr_bus == 16'h0003 && ~ram_instr) begin
+		ram_out = {8'b0, ps2_scancode};
 	end else if(addr_bus < 16'h1000 && ~ram_instr) begin
 		
 	end else if (addr_bus >= 16'h1000 && addr_bus < 16'h4c00 && ~ram_instr) begin

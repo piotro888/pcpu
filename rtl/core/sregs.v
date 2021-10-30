@@ -76,8 +76,8 @@ always @(posedge clk, posedge rst) begin
 
         if(alu_flags_ie)
             alu_flags <= alu_flags_in;
+        prev_irq <= irq_in;
     end
-    prev_irq <= irq_in;
 end
 
 assign boot_mode = jtr_mode;

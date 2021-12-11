@@ -12,7 +12,9 @@ module top (
 	input wire usb_rx,
 	output wire usb_tx,
 	input wire irq,
-	input wire ps2_clk, ps2_data
+	input wire ps2_clk, ps2_data,
+	output wire spi_clk, mosi, spi_cs,
+	input wire miso
 	
 	`ifndef sim
 	,
@@ -68,14 +70,16 @@ always @(posedge cpu_clk) begin // hold reset at startup
 		rst <= 1'b0;
 end
 
-wire ram_read, ram_write, ram_instr, ram_read_done, key_irq;
-wire [7:0] reg_leds, btinputreg, rx_data, ps2_scancode;
+wire ram_read, ram_write, ram_instr, ram_read_done, key_irq, spi_ready;
+wire [7:0] reg_leds, btinputreg, rx_data, ps2_scancode, spi_rx;
 wire [15:0] addr_bus, ram_in, prog_addr;
 wire [31:0] sdram_out;
 reg [15:0] ram_out;
 wire [31:0] instr_out;
 wire rx_new, tx_ready;
-reg uart_write, uart_read;
+reg uart_write, uart_read, spi_write;
+
+assign spi_cs = 1'b0;
 
 wire sdram_busy, sdram_ready, sdram_cack;
 reg sdram_read, sdram_write, ram_busy, ram_ready, vga_write, ram_cack;
@@ -94,9 +98,11 @@ uart uart(usb_rx, usb_tx, clki, rx_data, ram_in[7:0], rx_new, tx_ready, uart_wri
 
 ps_keyboard ps2k(ps2_clk, ps2_data, ps2_scancode, clki, cpu_clk, key_irq);
 
+spi spi_master(spi_clk, mosi, miso, cpu_clk, rst, ram_in[7:0], spi_write, spi_rx, spi_ready);
+
 // hw memory switching
 always @(*) begin
-	{sdram_read, sdram_write, ram_busy, vga_write, uart_write, uart_read} = 6'b0;
+	{sdram_read, sdram_write, ram_busy, vga_write, uart_write, uart_read, spi_write } = 7'b0;
 	ram_ready = 1'b1; ram_cack = 1'b1;
     ram_out = 16'b0;
 	if(addr_bus ==  16'h0000 && ~ram_instr) begin
@@ -110,6 +116,9 @@ always @(*) begin
 		ram_out = {14'b0, tx_ready, rx_new};
 	end else if (addr_bus == 16'h0003 && ~ram_instr) begin
 		ram_out = {8'b0, ps2_scancode};
+	end else if (addr_bus == 16'h0004 && ~ram_instr) begin
+		ram_out = {tx_ready, 7'b0, spi_rx};
+		spi_write = ram_write;
 	end else if(addr_bus < 16'h1000 && ~ram_instr) begin
 		
 	end else if (addr_bus >= 16'h1000 && addr_bus < 16'h4c00 && ~ram_instr) begin

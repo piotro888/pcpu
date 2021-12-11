@@ -9,7 +9,9 @@ module spi (
     input wire [7:0] data_in_bus,
     input wire data_send_rq,
     output reg [7:0] data_out,
-    output wire tx_ready_out
+    output wire tx_ready_out,
+    input wire spi_write_cs,
+    output reg spi_cs
 );
 
 reg tx_ready;
@@ -20,7 +22,7 @@ reg [7:0] data_in;
 reg tx_signal;
 reg prev_tx_signal;
 initial tx_signal = 1'b0;
-assign tx_ready_out = tx_ready & (tx_signal & prev_tx_signal);
+assign tx_ready_out = tx_ready & (~(tx_signal ^ prev_tx_signal));
 
 always @(posedge clki) begin
     if(rst) begin
@@ -67,6 +69,8 @@ always @(posedge cpu_clk) begin
     if(data_send_rq) begin
         data_in <= data_in_bus;
         tx_signal <= ~tx_signal;
+    end else if(spi_write_cs) begin
+        spi_cs <= data_in_bus[0];
     end
 end
 

@@ -98,7 +98,7 @@ uart uart(usb_rx, usb_tx, clki, rx_data, ram_in[7:0], rx_new, tx_ready, uart_wri
 
 ps_keyboard ps2k(ps2_clk, ps2_data, ps2_scancode, clki, cpu_clk, key_irq);
 
-spi spi_master(spi_clk, mosi, miso, cpu_clk, rst, ram_in[7:0], spi_write, spi_rx, spi_ready);
+spi spi_master(spi_clk, mosi, miso, clk_cnt[1], cpu_clk, rst, ram_in[7:0], spi_write, spi_rx, spi_ready);
 
 // hw memory switching
 always @(*) begin

@@ -14,7 +14,8 @@ module top (
 	input wire irq,
 	input wire ps2_clk, ps2_data,
 	output wire spi_clk, mosi, spi_cs,
-	input wire miso
+	input wire miso,
+	output wire freq_out
 	
 	`ifndef sim
 	,
@@ -82,7 +83,7 @@ wire [31:0] sdram_out;
 reg [15:0] ram_out;
 wire [31:0] instr_out;
 wire rx_new, tx_ready;
-reg uart_write, uart_read, spi_write, spi_write_cs;
+reg uart_write, uart_read, spi_write, spi_write_cs, freq_write;
 
 wire sdram_busy, sdram_ready, sdram_cack;
 reg sdram_read, sdram_write, ram_busy, ram_ready, vga_write, ram_cack;
@@ -103,9 +104,11 @@ ps_keyboard ps2k(ps2_clk, ps2_data, ps2_scancode, clki, cpu_clk, key_irq);
 
 spi spi_master(spi_clk, mosi, miso, clk_cnt[5], cpu_clk, rst, ram_in[7:0], spi_write, spi_rx, spi_ready, spi_write_cs, spi_cs);
 
+freqgen freqgen(clki, addr_bus-16'h6, ram_in, freq_write, cpu_clk, cpu_rst, freq_out);
+
 // hw memory switching
 always @(*) begin
-	{sdram_read, sdram_write, ram_busy, vga_write, uart_write, uart_read, spi_write, spi_write_cs} = 8'b0;
+	{sdram_read, sdram_write, ram_busy, vga_write, uart_write, uart_read, spi_write, spi_write_cs, freq_write} = 9'b0;
 	ram_ready = 1'b1; ram_cack = 1'b1;
     ram_out = 16'b0;
 	if(addr_bus ==  16'h0000 && ~ram_instr) begin
@@ -125,7 +128,10 @@ always @(*) begin
 	end else if (addr_bus == 16'h0005 && ~ram_instr) begin
 		ram_out = {16'b0};
 		spi_write_cs = ram_write;
-	end else if(addr_bus < 16'h1000 && ~ram_instr) begin
+	end else if (addr_bus >= 16'h0006 && addr_bus <= 16'h0009 && ~ram_instr) begin
+		ram_out = {16'b0};
+		freq_write = ram_write;
+	end  else if(addr_bus < 16'h1000 && ~ram_instr) begin
 		
 	end else if (addr_bus >= 16'h1000 && addr_bus < 16'h4c00 && ~ram_instr) begin
 		// vga memory write only

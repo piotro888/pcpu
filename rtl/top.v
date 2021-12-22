@@ -64,6 +64,11 @@ wire cpu_rst = rst | ~rst_in;
 `endif
 
 always @(posedge cpu_clk) begin // hold reset at startup
+	if(~rst_in) begin
+		rst_cnt <= 3'b111;
+		rst <= 1'b1;
+	end
+	
 	if(|rst_cnt)
 		rst_cnt <= rst_cnt - 1'b1;
 	else

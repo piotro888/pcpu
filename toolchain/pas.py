@@ -24,6 +24,7 @@ line_nr = 0
 filen = ''
 error_cnt = 0
 oformat = 0
+memmap = 0
 
 def compileAll():
     global romaddr, ramaddr
@@ -42,10 +43,14 @@ def compileAll():
     printv("DONE")
     printv(generated)
     printv("Writing files")
-    for label in labels:
-        print(label, labels[label])
-    for label in addralias:
-        print(label, addralias[label])
+    if memmap:
+        mmf = open(output_path + ".mm", "wt")
+        for label in labels:
+            mmf.write(""+label+" "+str(labels[label])+"\n")
+        print("-p\n")
+        for label in addralias:
+            mmf.write(""+label+" "+str(addralias[label])+"\n")
+        mmf.close()
     output_file = open(output_path, "wt")
     cs=0
     if error_cnt == 0:
@@ -254,7 +259,19 @@ def compileFileSecondRun(input_path):
                         elif tokens[tokenpos] in addralias:
                             num = addralias[tokens[tokenpos]]
                         elif tokens[tokenpos] in labels:
-                            num = labels[tokens[tokenpos]]
+                            num = labels[tokens[tokenpos]]-1
+                            printv("NOTE: offsetting [label] const for gcc. when using srs rx->pc address is offset by +1, so tah balances. you probably still want to use that")
+                        elif tokens[tokenpos].find('+') != -1:
+                            addr = tokens[tokenpos]
+                            abasen = addr[:addr.find('+')]
+                            printv(abasen)
+                            if abasen not in addralias:
+                                printe('Invalid address reference (offset detected)')
+                            else:
+                                if addr[addr.find('+'):] in macros:
+                                    num = addralias[abasen]+macros[addr.find('+'):]
+                                else:
+                                    num = addralias[abasen]+get_number(addr[addr.find('+'):])
                         else:
                             num = get_number(tokens[tokenpos])
                         cinstr = cinstr | ((num&65535)<<16)
@@ -395,7 +412,7 @@ verbose = 0
 
 def parseArgs():
     args = sys.argv
-    global output_path, verbose, oformat
+    global output_path, verbose, oformat, memmap
     output_path = ''
     
     for i, arg in enumerate(args):
@@ -412,6 +429,8 @@ def parseArgs():
             verbose = 1
         elif arg == "-b":
             oformat = 1
+        elif arg == "-m":
+            memmap = 1
         else:
             input_paths.append(arg)
         if output_path == '':

@@ -47,7 +47,7 @@ def compileAll():
         mmf = open(output_path + ".mm", "wt")
         for label in labels:
             mmf.write(""+label+" "+str(labels[label])+"\n")
-        print("-p\n")
+        mmf.write("-p\n")
         for label in addralias:
             mmf.write(""+label+" "+str(addralias[label])+"\n")
         mmf.close()

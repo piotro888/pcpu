@@ -83,7 +83,8 @@ end
 
 wire ram_read, ram_write, ram_instr, ram_read_done, key_irq, spi_ready;
 wire [7:0] reg_leds, btinputreg, rx_data, ps2_scancode, spi_rx;
-wire [15:0] addr_bus, ram_in, prog_addr;
+wire [15:0] ram_in, prog_addr;
+wire [19:0] addr_bus;
 wire [31:0] sdram_out;
 reg [15:0] ram_out;
 wire [31:0] instr_out;
@@ -95,7 +96,7 @@ reg sdram_read, sdram_write, ram_busy, ram_ready, vga_write, ram_cack;
 
 cpu cpu(cpu_clk, cpu_rst, addr_bus, prog_addr, ram_in, ram_out, instr_out, sdram_out, ram_busy, ram_ready, sdram_cack, key_irq, ram_read, ram_write, ram_instr, ram_read_done, reg_leds, pc_leds);
 
-sdram sdram(ramclk, {7'b0, addr_bus}, ram_in, sdram_out, sdram_read, sdram_write, sdram_busy, sdram_ready, sdram_cack, dr_dqml, dr_dqmh, dr_cs_n, dr_cas_n, dr_ras_n, dr_we_n, dr_cke, dr_ba, dr_a, dr_dq, cpu_clk, ram_instr);
+sdram sdram(ramclk, {3'b0, addr_bus}, ram_in, sdram_out, sdram_read, sdram_write, sdram_busy, sdram_ready, sdram_cack, dr_dqml, dr_dqmh, dr_cs_n, dr_cas_n, dr_ras_n, dr_we_n, dr_cke, dr_ba, dr_a, dr_dq, cpu_clk, ram_instr);
 
 serialout regleds(clki, reg_leds, sclk, sdata, sdatain, sdata_pl, btinputreg);
 

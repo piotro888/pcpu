@@ -20,21 +20,24 @@ module sregs(
 
     // paging
     input wire [15:0] addr_in,
-    output reg [19:0] addr_out
+    output reg [19:0] addr_out,
+    input wire [15:0] prog_in,
+    output reg [19:0] prog_out
 );
 
 reg [3:0] rt_mode = 4'b0001; //#1  0-SUP 1-INA 2-IRQEN 3-MEMPAGE
-reg jtr_mode = 1'b1, jtr_mode_buff = 1'b1; //#2 0-BLM
+reg [1:0] jtr_mode = 2'b01, jtr_mode_buff = 2'b01; //#2 0-BLM 1-PRGPAGE
 reg [15:0] irq_pc = 1'b0; // #3 Temporaries for processor handled routines (IRQ - previous pc addr)
 reg prev_irq = 1'b0;
 
 // page tables
 reg [7:0] mem_page [16]; // [0xF] 0xFAA -> 0x01 0xFAA (16(4)->20(8))
+reg [7:0] prog_page [16];
 
 always @(posedge clk, posedge rst) begin
     if(rst) begin
         rt_mode <= 4'b0001;
-        jtr_mode <= 1'b1; jtr_mode_buff <= 1'b1; 
+        jtr_mode <= 2'b01; jtr_mode_buff <= 2'b01; 
         prev_irq <= 1'b0; irq_pc <= 16'b0;
         alu_flags <= 5'b0;
     end else begin
@@ -46,7 +49,7 @@ always @(posedge clk, posedge rst) begin
                     end
                 end
                 16'b10:
-                    jtr_mode_buff <= sr_in[0];
+                    jtr_mode_buff <= sr_in[1:0];
                 16'b11:
                     irq_pc <= sr_in;
                 16'b100:
@@ -55,6 +58,9 @@ always @(posedge clk, posedge rst) begin
             endcase
             if(sr_sel >= 16'b10000 && sr_sel <= 16'b11111 && rt_mode[0]) begin
                 mem_page[sr_sel-16'b10000] <= sr_in[7:0];
+            end
+            if(sr_sel >= 16'b100000 && sr_sel <= 16'b101111 && rt_mode[0]) begin
+                prog_page[sr_sel-16'b100000] <= sr_in[7:0];
             end
         end
 
@@ -68,6 +74,9 @@ always @(posedge clk, posedge rst) begin
         
         if(irq_in & rt_mode[2]) begin
             rt_mode[0] <= 1'b1; // set priviedged mode on interrupt
+            // disable paging
+            rt_mode[3] <= 1'b0;
+            jtr_mode[1] <= 1'b0;
 
             // save old pc to sr 3 (simultate change to next instruction - no repeat at iret)
             if (pc_ie)
@@ -91,7 +100,7 @@ always @(posedge clk, posedge rst) begin
     end
 end
 
-assign boot_mode = jtr_mode;
+assign boot_mode = jtr_mode[0];
 assign instr_mem_over = rt_mode[1];
 assign irq_en = rt_mode[2];
 
@@ -106,10 +115,15 @@ always @(*) begin
         sr_out = irq_pc;
     end
 
-    if(rt_mode[3]) 
+    if(~rt_mode[3]) 
         addr_out = {4'b0, addr_in};
     else
         addr_out = {mem_page[addr_in[15:12]], addr_in[11:0]};
+
+    if(~jtr_mode[1]) 
+        prog_out = {4'b0, prog_in};
+    else
+        prog_out = {prog_page[prog_in[15:12]], prog_in[11:0]};
 end
 
 endmodule

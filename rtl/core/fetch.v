@@ -31,6 +31,8 @@ wire prefetch_ok = instr_out[6:0] != 7'h02 && instr_out[6:0] != 7'h03 && instr_o
 wire prefetch_ok_ramd = ram_data[6:0] != 7'h02 && ram_data[6:0] != 7'h03 && ram_data[6:0] != 7'h05 && ram_data[6:0] != 7'h06;
 wire prefetch_ok_pref = pref_instr[6:0] != 7'h02 && pref_instr[6:0] != 7'h03 && pref_instr[6:0] != 7'h05 && pref_instr[6:0] != 7'h06;
 
+// Adresses are paged after fetch module, so prefetch may break if jtr to pc+1 and changed prgmem table. Jumping to 0 is recommended
+
 always @(negedge clk, posedge rst) begin
     if(rst) begin
         ram_read <= 1'b0;

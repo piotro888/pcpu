@@ -35,8 +35,7 @@ reg [2:0] rst_cnt = 3'b010;
 
 `ifndef sim
 //assign cpu_clk = clk_cnt[17]; // ~190Hz
-//assign cpu_clk = clk_cnt[4];
-assign cpu_clk = cpu_clk_pll;
+assign cpu_clk = clk_cnt[4];
 //assign cpu_clk = clk_cnt[24]; // ~1Hz
 `else
 assign cpu_clk = clk_cnt[2];
@@ -57,10 +56,6 @@ assign dr_clk = ~clk_cnt[0];
 always @(posedge clki) begin
     clk_cnt <= clk_cnt + 1;
 end
-
-wire ramclk, spiclk, cpu_clk_pll, pll_locked;
-
-mainpll pll(1'b0, clki, ramclk, cpu_clk_pll, spiclk, pll_locked);
 
 reg rst = 1'b1;
 `ifdef sim
@@ -96,7 +91,7 @@ reg sdram_read, sdram_write, ram_busy, ram_ready, vga_write, ram_cack;
 
 cpu cpu(cpu_clk, cpu_rst, addr_bus, prog_addr, ram_in, ram_out, instr_out, sdram_out, ram_busy, ram_ready, sdram_cack, key_irq, ram_read, ram_write, ram_instr, ram_read_done, reg_leds, pc_leds);
 
-sdram sdram(ramclk, {3'b0, addr_bus}, ram_in, sdram_out, sdram_read, sdram_write, sdram_busy, sdram_ready, sdram_cack, dr_dqml, dr_dqmh, dr_cs_n, dr_cas_n, dr_ras_n, dr_we_n, dr_cke, dr_ba, dr_a, dr_dq, cpu_clk, ram_instr);
+sdram sdram(clk_cnt[0], {3'b0, addr_bus}, ram_in, sdram_out, sdram_read, sdram_write, sdram_busy, sdram_ready, sdram_cack, dr_dqml, dr_dqmh, dr_cs_n, dr_cas_n, dr_ras_n, dr_we_n, dr_cke, dr_ba, dr_a, dr_dq, cpu_clk, ram_instr);
 
 serialout regleds(clki, reg_leds, sclk, sdata, sdatain, sdata_pl, btinputreg);
 
@@ -108,7 +103,7 @@ uart uart(usb_rx, usb_tx, clki, rx_data, ram_in[7:0], rx_new, tx_ready, uart_wri
 
 ps_keyboard ps2k(ps2_clk, ps2_data, ps2_scancode, clki, cpu_clk, key_irq);
 
-spi spi_master(spi_clk, mosi, miso, spiclk, cpu_clk, rst, ram_in[7:0], spi_write, spi_rx, spi_ready, spi_write_cs, spi_cs);
+spi spi_master(spi_clk, mosi, miso, clk_cnt[5], cpu_clk, rst, ram_in[7:0], spi_write, spi_rx, spi_ready, spi_write_cs, spi_cs);
 
 freqgen freqgen(clki, addr_bus-16'h6, ram_in, freq_write, cpu_clk, cpu_rst, freq_out);
 

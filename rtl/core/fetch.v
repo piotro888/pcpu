@@ -11,13 +11,15 @@ module fetch(
     input wire flag_boot_mode,
     input wire rst,
     input wire irq_in, irq_en,
-    output reg irq_p
+    output reg irq_p,
+    input wire [7:0] pc_page_in
 );
 
 reg [1:0] state;
 reg c_acked;
 reg [15:0] prev_pc;
 reg [31:0] pref_instr;
+reg [7:0] prev_pc_page, saved_pc_page;
 reg prev_irq;
 
 initial  state = 2'b0;
@@ -32,6 +34,7 @@ wire prefetch_ok_ramd = ram_data[6:0] != 7'h02 && ram_data[6:0] != 7'h03 && ram_
 wire prefetch_ok_pref = pref_instr[6:0] != 7'h02 && pref_instr[6:0] != 7'h03 && pref_instr[6:0] != 7'h05 && pref_instr[6:0] != 7'h06;
 
 // Adresses are paged after fetch module, so prefetch may break if jtr to pc+1 and changed prgmem table. Jumping to 0 is recommended
+// TODO: flush prefetch on srs/interrupt
 
 always @(negedge clk, posedge rst) begin
     if(rst) begin
@@ -45,6 +48,8 @@ always @(negedge clk, posedge rst) begin
         c_acked <= 1'b0;
         irq_p <= 1'b0;
         prev_irq <= 1'b0;
+        prev_pc_page <= 8'b0;
+        saved_pc_page <= 8'b0;
     end else begin
         if(~flag_boot_mode) begin
             if(pc_in != prev_pc) begin
@@ -54,17 +59,19 @@ always @(negedge clk, posedge rst) begin
 
             case(state)
                 2'b0: begin  // IDLE STATE
-                    if((pc_in != prev_pc || pc_hold) && ~ram_busy) begin // if pc change fetch new instr
+                    if((pc_in != prev_pc || pc_page_in != prev_pc_page || pc_hold) && ~ram_busy) begin // if pc change fetch new instr
                         ram_read <= 1'b1;
                         ram_addr_ovr <= 1'b1;
                         ram_addr <= pc_in; // fetch instruction pc pointing to
                         state <= 2'b1; // got to next state
+                        saved_pc_page <= pc_page_in;
                     end else if(prefetch_ok) begin // start prefetch
                         ram_read <= 1'b1;
                         ram_addr_ovr <= 1'b1;
                         state <= 2'b10;
                         // static prediction pc+1
                         ram_addr <= pc_in+16'b1;
+                        saved_pc_page <= pc_page_in;
                     end
                 end
                 2'b1: begin // RAM READ STATE
@@ -86,6 +93,7 @@ always @(negedge clk, posedge rst) begin
                                 state <= 2'b10;
                                 // static prediction pc+1
                                 ram_addr <= pc_in+16'b1;
+                                saved_pc_page <= pc_page_in;
                             end else begin // else go to idle state
                                 ram_addr_ovr <= 1'b0;
                                 state <= 2'b0;
@@ -104,8 +112,8 @@ always @(negedge clk, posedge rst) begin
                         ram_read <= 1'b0;
                         c_acked <= 1'b1;
 
-                        if(ram_data_ready && (pc_in != prev_pc || pc_hold)) begin // ram read finished & new instruction arrived
-                            if(pc_in == ram_addr) begin // predict hit, return to idle
+                        if(ram_data_ready && (pc_in != prev_pc || pc_hold || pc_page_in != prev_pc_page)) begin // ram read finished & new instruction arrived
+                            if(pc_in == ram_addr && pc_page_in == saved_pc_page) begin // predict hit, return to idle
                                 ram_addr_ovr <= 1'b0;
                                 c_acked <= 1'b0;
                                 pc_hold <= 1'b0; 
@@ -116,6 +124,7 @@ always @(negedge clk, posedge rst) begin
                                     state <= 2'b10;
                                     // static prediction pc+1
                                     ram_addr <= pc_in+16'b1;
+                                    saved_pc_page <= pc_page_in;
                                 end else begin // else go to idle state
                                     ram_addr_ovr <= 1'b0;
                                     state <= 2'b0;
@@ -125,6 +134,7 @@ always @(negedge clk, posedge rst) begin
                                 ram_read <= 1'b1;
                                 ram_addr_ovr <= 1'b1;
                                 ram_addr <= pc_in;
+                                saved_pc_page <= pc_page_in;
                                 state <= 2'b1;
                             end
                         end else if(ram_data_ready) begin // ram read finished while instruction is still executing
@@ -137,8 +147,8 @@ always @(negedge clk, posedge rst) begin
                     end
                 end
                 2'b11: begin // PREFETCH wait for next pc STATE
-                    if(pc_in != prev_pc || pc_hold) begin // new instruction
-                        if(pc_in == ram_addr) begin // predict hit, return to idle
+                    if(pc_in != prev_pc || pc_hold || pc_page_in != prev_pc_page ) begin // new instruction
+                        if(pc_in == ram_addr && pc_page_in == saved_pc_page) begin // predict hit, return to idle
                             c_acked <= 1'b0;
                             pc_hold <= 1'b0; 
                             instr_out <= pref_instr;
@@ -148,6 +158,7 @@ always @(negedge clk, posedge rst) begin
                                 state <= 2'b10;
                                 // static prediction pc+1
                                 ram_addr <= pc_in+16'b1;
+                                saved_pc_page <= pc_page_in;
                             end else begin // else go to idle state
                                 ram_addr_ovr <= 1'b0;
                                 state <= 2'b0;
@@ -156,6 +167,7 @@ always @(negedge clk, posedge rst) begin
                             ram_read <= 1'b1;
                             ram_addr_ovr <= 1'b1;
                             ram_addr <= pc_in;
+                            saved_pc_page <= pc_page_in;
                             state <= 2'b1;
                         end
                     end
@@ -163,13 +175,15 @@ always @(negedge clk, posedge rst) begin
             endcase
         end
 
+        // FIXME: Not working when looping on addr 0x1
         if(irq_in != prev_irq && irq_in == 1'b1 && irq_en)
             irq_p <= 1'b1;
 
-        if(pc_in == 16'b1 && irq_p)
+        if(pc_in == 16'b1 && pc_page_in == 8'b0 && irq_p)
             irq_p <= 1'b0;
 
         prev_pc <= pc_in;
+        prev_pc_page <= pc_page_in;
         prev_irq <= irq_in;
     end
 end

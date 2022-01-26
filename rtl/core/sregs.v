@@ -22,7 +22,8 @@ module sregs(
     input wire [15:0] addr_in,
     output reg [19:0] addr_out,
     input wire [15:0] prog_in,
-    output reg [19:0] prog_out
+    output reg [19:0] prog_out,
+    output reg [7:0] prog_page_out
 );
 
 reg [3:0] rt_mode = 4'b0001; //#1  0-SUP 1-INA 2-IRQEN 3-MEMPAGE
@@ -127,10 +128,13 @@ always @(*) begin
     else
         addr_out = {mem_page[addr_in[15:12]], addr_in[11:0]};
 
-    if(~jtr_mode[1]) 
+    if(~jtr_mode[1])  begin
         prog_out = {4'b0, prog_in};
-    else
+        prog_page_out = 8'b0;
+    end else begin
         prog_out = {prog_page[prog_in[15:12]], prog_in[11:0]};
+        prog_page_out = prog_page[prog_in[15:12]];
+    end
 end
 
 endmodule

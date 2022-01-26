@@ -95,7 +95,7 @@ sdram sdram(clk_cnt[0], {3'b0, addr_bus}, ram_in, sdram_out, sdram_read, sdram_w
 
 serialout regleds(clki, reg_leds, sclk, sdata, sdatain, sdata_pl, btinputreg);
 
-vga gpu(clki, cpu_clk, vsync, hsync, r, g, b, addr_bus-16'h1000, vga_write, ram_in);
+vga gpu(clki, cpu_clk, vsync, hsync, r, g, b, addr_bus-20'h1000, vga_write, ram_in);
 
 prom prom( prog_addr, ~cpu_clk, instr_out);
 
@@ -105,36 +105,36 @@ ps_keyboard ps2k(ps2_clk, ps2_data, ps2_scancode, clki, cpu_clk, key_irq);
 
 spi spi_master(spi_clk, mosi, miso, clk_cnt[5], cpu_clk, rst, ram_in[7:0], spi_write, spi_rx, spi_ready, spi_write_cs, spi_cs);
 
-freqgen freqgen(clki, addr_bus-16'h6, ram_in, freq_write, cpu_clk, cpu_rst, freq_out);
+freqgen freqgen(clki, addr_bus-20'h6, ram_in, freq_write, cpu_clk, cpu_rst, freq_out);
 
 // hw memory switching
 always @(*) begin
 	{sdram_read, sdram_write, ram_busy, vga_write, uart_write, uart_read, spi_write, spi_write_cs, freq_write} = 9'b0;
 	ram_ready = 1'b1; ram_cack = 1'b1;
     ram_out = 16'b0;
-	if(addr_bus ==  16'h0000 && ~ram_instr) begin
+	if(addr_bus == 20'h0000 && ~ram_instr) begin
 		//read only
 		ram_out = {8'b0, btinputreg};
-	end else if (addr_bus == 16'h0001 && ~ram_instr) begin
+	end else if (addr_bus == 20'h0001 && ~ram_instr) begin
 		ram_out = {8'b0, rx_data};
 		uart_write = ram_write;
 		uart_read = ram_read_done; // special signal when ram_ready is set, do not emit ram_read again for sdram
-	end else if (addr_bus == 16'h0002 && ~ram_instr) begin
+	end else if (addr_bus == 20'h0002 && ~ram_instr) begin
 		ram_out = {14'b0, tx_ready, rx_new};
-	end else if (addr_bus == 16'h0003 && ~ram_instr) begin
+	end else if (addr_bus == 20'h0003 && ~ram_instr) begin
 		ram_out = {8'b0, ps2_scancode};
-	end else if (addr_bus == 16'h0004 && ~ram_instr) begin
+	end else if (addr_bus == 20'h0004 && ~ram_instr) begin
 		ram_out = {spi_ready, 7'b0, spi_rx};
 		spi_write = ram_write;
-	end else if (addr_bus == 16'h0005 && ~ram_instr) begin
+	end else if (addr_bus == 20'h0005 && ~ram_instr) begin
 		ram_out = {16'b0};
 		spi_write_cs = ram_write;
-	end else if (addr_bus >= 16'h0006 && addr_bus <= 16'h0009 && ~ram_instr) begin
+	end else if (addr_bus >= 20'h0006 && addr_bus <= 20'h0009 && ~ram_instr) begin
 		ram_out = {16'b0};
 		freq_write = ram_write;
-	end  else if(addr_bus < 16'h1000 && ~ram_instr) begin
+	end  else if(addr_bus < 20'h1000 && ~ram_instr) begin
 		
-	end else if (addr_bus >= 16'h1000 && addr_bus < 16'h4c00 && ~ram_instr) begin
+	end else if (addr_bus >= 20'h1000 && addr_bus < 20'h4c00 && ~ram_instr) begin
 		// vga memory write only
 		vga_write = ram_write;
 	end

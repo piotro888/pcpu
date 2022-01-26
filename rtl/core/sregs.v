@@ -27,7 +27,8 @@ module sregs(
 
 reg [3:0] rt_mode = 4'b0001; //#1  0-SUP 1-INA 2-IRQEN 3-MEMPAGE
 reg [1:0] jtr_mode = 2'b01, jtr_mode_buff = 2'b01; //#2 0-BLM 1-PRGPAGE
-reg [15:0] irq_pc = 1'b0; // #3 Temporaries for processor handled routines (IRQ - previous pc addr)
+reg [15:0] irq_pc = 16'b0; // #3 Temporaries for processor handled routines (IRQ - previous pc addr)
+reg [3:0] irq_flags = 4'b0; // #5 Flags saved at IRQ: 0-MEMPG 1-PRGPG 2-SUP 3-(IINT - interrupt from 'int' instruction)
 reg prev_irq = 1'b0;
 
 // page tables
@@ -73,6 +74,9 @@ always @(posedge clk, posedge rst) begin
         end
         
         if(irq_in & rt_mode[2]) begin
+            // save old flags
+            irq_flags[3:0] = {1'b0, rt_mode[0], jtr_mode[1], rt_mode[3]};
+
             rt_mode[0] <= 1'b1; // set priviedged mode on interrupt
             // disable paging
             rt_mode[3] <= 1'b0;
@@ -107,8 +111,11 @@ assign irq_en = rt_mode[2];
 always @(*) begin
     if(~out_addr_ovr) begin
         case (sr_sel)
+            16'b1: sr_out = rt_mode;
+            16'b10: sr_out = jtr_mode;
             16'b11: sr_out = irq_pc;
             16'b100: sr_out = alu_flags;
+            16'b101: sr_out = irq_flags;
             default: sr_out = 16'b0;
         endcase
     end else begin

@@ -34,7 +34,7 @@ wire prefetch_ok_ramd = ram_data[6:0] != 7'h02 && ram_data[6:0] != 7'h03 && ram_
 wire prefetch_ok_pref = pref_instr[6:0] != 7'h02 && pref_instr[6:0] != 7'h03 && pref_instr[6:0] != 7'h05 && pref_instr[6:0] != 7'h06;
 
 // Adresses are paged after fetch module, so prefetch may break if jtr to pc+1 and changed prgmem table. Jumping to 0 is recommended
-// TODO: flush prefetch on srs/interrupt
+// TODO?: flush prefetch on srs/interrupt
 
 always @(negedge clk, posedge rst) begin
     if(rst) begin
@@ -52,7 +52,7 @@ always @(negedge clk, posedge rst) begin
         saved_pc_page <= 8'b0;
     end else begin
         if(~flag_boot_mode) begin
-            if(pc_in != prev_pc) begin
+            if(pc_in != prev_pc || pc_page_in != prev_pc_page) begin
                 pc_hold <= 1'b1;
                 instr_out <= 32'b0; // no-op as hold instr
             end
@@ -175,7 +175,6 @@ always @(negedge clk, posedge rst) begin
             endcase
         end
 
-        // FIXME: Not working when looping on addr 0x1
         if(irq_in != prev_irq && irq_in == 1'b1 && irq_en)
             irq_p <= 1'b1;
 

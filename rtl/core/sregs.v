@@ -82,6 +82,7 @@ always @(posedge clk, posedge rst) begin
             // disable paging
             rt_mode[3] <= 1'b0;
             jtr_mode[1] <= 1'b0;
+            jtr_mode_buff[1] <= 1'b0; // update of jmp buff is also needed!
 
             // save old pc to sr 3 (simultate change to next instruction - no repeat at iret)
             if (pc_ie)

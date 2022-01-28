@@ -31,6 +31,7 @@ reg [1:0] jtr_mode = 2'b01, jtr_mode_buff = 2'b01; //#2 0-BLM 1-PRGPAGE
 reg [15:0] irq_pc = 16'b0; // #3 Temporaries for processor handled routines (IRQ - previous pc addr)
 reg [3:0] irq_flags = 4'b0; // #5 Flags saved at IRQ: 0-MEMPG 1-PRGPG 2-SUP 3-(IINT - interrupt from 'int' instruction)
 reg prev_irq = 1'b0;
+reg [15:0] virt_scratch_reg; // #6 Temporary register for use in context switch with virtual memory
 
 // page tables
 reg [7:0] mem_page [16]; // [0xF] 0xFAA -> 0x01 0xFAA (16(4)->20(8))
@@ -56,6 +57,8 @@ always @(posedge clk, posedge rst) begin
                     irq_pc <= sr_in;
                 16'b100:
                     alu_flags <= sr_in[4:0];
+                16'b110:
+                    virt_scratch_reg <= sr_in;
                 default: begin end
             endcase
             if(sr_sel >= 16'b10000 && sr_sel <= 16'b11111 && rt_mode[0]) begin
@@ -66,7 +69,7 @@ always @(posedge clk, posedge rst) begin
             end
         end
 
-        if (instr_op == 7'b0001110 || instr_op == 7'b0001111 || (instr_op == 7'b0010001 && sr_sel == 16'b0)) begin
+        if (instr_op == 7'b0001110 || instr_op == 7'b0001111 || instr_op == 7'b0011110 || (instr_op == 7'b0010001 && sr_sel == 16'b0)) begin
             jtr_mode <= jtr_mode_buff;
         end
 
@@ -118,6 +121,7 @@ always @(*) begin
             16'b11: sr_out = irq_pc;
             16'b100: sr_out = alu_flags;
             16'b101: sr_out = irq_flags;
+            16'b110: sr_out = virt_scratch_reg;
             default: sr_out = 16'b0;
         endcase
     end else begin

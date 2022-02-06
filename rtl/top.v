@@ -76,20 +76,21 @@ always @(posedge cpu_clk) begin // hold reset at startup
 		rst <= 1'b0;
 end
 
-wire ram_read, ram_write, ram_instr, ram_read_done, key_irq, spi_ready;
+wire ram_read, ram_write, ram_instr, ram_read_done, key_irq, spi_ready, irq_main;
 wire [7:0] reg_leds, btinputreg, rx_data, ps2_scancode, spi_rx;
 wire [15:0] ram_in, prog_addr;
+wire [15:0] irc_bus_out;
 wire [19:0] addr_bus;
 wire [31:0] sdram_out;
 reg [15:0] ram_out;
 wire [31:0] instr_out;
 wire rx_new, tx_ready;
-reg uart_write, uart_read, spi_write, spi_write_cs, freq_write;
+reg uart_write, uart_read, spi_write, spi_write_cs, freq_write, irc_write;
 
 wire sdram_busy, sdram_ready, sdram_cack;
 reg sdram_read, sdram_write, ram_busy, ram_ready, vga_write, ram_cack;
 
-cpu cpu(cpu_clk, cpu_rst, addr_bus, prog_addr, ram_in, ram_out, instr_out, sdram_out, ram_busy, ram_ready, sdram_cack, key_irq, ram_read, ram_write, ram_instr, ram_read_done, reg_leds, pc_leds);
+cpu cpu(cpu_clk, cpu_rst, addr_bus, prog_addr, ram_in, ram_out, instr_out, sdram_out, ram_busy, ram_ready, sdram_cack, irq_main, ram_read, ram_write, ram_instr, ram_read_done, reg_leds, pc_leds);
 
 sdram sdram(clk_cnt[0], {3'b0, addr_bus}, ram_in, sdram_out, sdram_read, sdram_write, sdram_busy, sdram_ready, sdram_cack, dr_dqml, dr_dqmh, dr_cs_n, dr_cas_n, dr_ras_n, dr_we_n, dr_cke, dr_ba, dr_a, dr_dq, cpu_clk, ram_instr);
 
@@ -107,9 +108,11 @@ spi spi_master(spi_clk, mosi, miso, clk_cnt[5], cpu_clk, rst, ram_in[7:0], spi_w
 
 freqgen freqgen(clki, addr_bus-20'h6, ram_in, freq_write, cpu_clk, cpu_rst, freq_out);
 
+irq_ctrl irc(clki, {15'b0, key_irq}, cpu_clk, irc_write, irq_main, addr_bus-20'h10, ram_in, irc_bus_out);
+
 // hw memory switching
 always @(*) begin
-	{sdram_read, sdram_write, ram_busy, vga_write, uart_write, uart_read, spi_write, spi_write_cs, freq_write} = 9'b0;
+	{sdram_read, sdram_write, ram_busy, vga_write, uart_write, uart_read, spi_write, spi_write_cs, freq_write, irc_write} = 10'b0;
 	ram_ready = 1'b1; ram_cack = 1'b1;
     ram_out = 16'b0;
 	if(addr_bus == 20'h0000 && ~ram_instr) begin
@@ -132,7 +135,10 @@ always @(*) begin
 	end else if (addr_bus >= 20'h0006 && addr_bus <= 20'h0009 && ~ram_instr) begin
 		ram_out = {16'b0};
 		freq_write = ram_write;
-	end  else if(addr_bus < 20'h1000 && ~ram_instr) begin
+	end else if (addr_bus >= 20'h0010 && addr_bus <= 20'h0013 && ~ram_instr) begin
+		ram_out = irc_bus_out;
+		irc_write = ram_write;
+	end else if(addr_bus < 20'h1000 && ~ram_instr) begin
 		
 	end else if (addr_bus >= 20'h1000 && addr_bus < 20'h4c00 && ~ram_instr) begin
 		// vga memory write only

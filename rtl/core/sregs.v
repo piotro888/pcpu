@@ -10,7 +10,7 @@ module sregs(
     output wire boot_mode, instr_mem_over,
 
     // interrupt handling
-    input wire irq_in,
+    input wire irq_in, irq_instr,
     input wire [15:0] pc_in,
     output wire irq_en,
     input wire out_addr_ovr, pc_ie, pc_inc,
@@ -34,8 +34,8 @@ reg prev_irq = 1'b0;
 reg [15:0] virt_scratch_reg; // #6 Temporary register for use in context switch with virtual memory
 
 // page tables
-reg [7:0] mem_page [16]; // [0xF] 0xFAA -> 0x01 0xFAA (16(4)->20(8))
-reg [7:0] prog_page [16];
+reg [7:0] mem_page [15:0]; // [0xF] 0xFAA -> 0x01 0xFAA (16(4)->20(8))
+reg [7:0] prog_page [15:0];
 
 always @(posedge clk, posedge rst) begin
     if(rst) begin
@@ -79,13 +79,16 @@ always @(posedge clk, posedge rst) begin
         
         if(irq_in & rt_mode[2]) begin
             // save old flags
-            irq_flags[3:0] = {1'b0, rt_mode[0], jtr_mode[1], rt_mode[3]};
+            irq_flags[3:0] = {irq_instr, rt_mode[0], jtr_mode[1], rt_mode[3]};
 
             rt_mode[0] <= 1'b1; // set priviedged mode on interrupt
             // disable paging
             rt_mode[3] <= 1'b0;
             jtr_mode[1] <= 1'b0;
             jtr_mode_buff[1] <= 1'b0; // update of jmp buff is also needed!
+
+            // disable interrrupts (this prevents only setting up irq_p in fetch, this interrrupt is processed ok)
+            rt_mode[2] <= 1'b0;
 
             // save old pc to sr 3 (simultate change to next instruction - no repeat at iret)
             if (pc_ie)
@@ -95,12 +98,6 @@ always @(posedge clk, posedge rst) begin
 
             // ? interrupt source
             // jump 0x1 in pc module
-        end
-
-        if(~irq_in & prev_irq & rt_mode[2]) begin
-            // disable interrupts only when pc already changed value (and irq_p cleared).
-            // other values must be saved immediately
-            rt_mode[2] <= 1'b0; 
         end
 
         if(alu_flags_ie)

@@ -18,11 +18,11 @@ initial begin
     rx_data_out <= 8'b0;
 end
 
-reg baudclk8 = 1'b0; //9600*8=76800 Hz
+reg baudclk8 = 1'b0; //9600*8=76800 Hz 115200*8=921600
 reg [3:0] txclkcnt = 4'b0;
 reg [8:0] clkcnt = 9'b0;
 always @(posedge clk) begin
-    if(clkcnt == 325) begin
+    if(clkcnt == 27) begin
         baudclk8 = ~baudclk8;
         clkcnt <= 0;
     end else begin

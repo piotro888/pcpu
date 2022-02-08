@@ -25,8 +25,8 @@ wire frame_valid = (~code_shift[0] & code_shift[10] & (^code_shift[9:1]));
 
 // ~800 us -> 20ns*40000 -> 15b / 1us*800 -> 10b
 reg [9:0] frame_time;
+reg [3:0] irq_time;
 always @(posedge cpu_clk) begin
-    irq <= 1'b0; // TODO: sync irq with cpu clk
     if(|frame_time || (~(|frame_time) && db_clk == 1'b0))
         frame_time <= frame_time + 10'b1;
 
@@ -35,6 +35,14 @@ always @(posedge cpu_clk) begin
             scancode <= code_shift[9:1];
             irq <= 1'b1;
         end
+
+    if(irq)
+        irq_time <= irq_time + 4'b1;
+
+    if(&irq_time) begin
+        irq_time <= 4'b0;
+        irq <= 1'b0;
+    end
 end
 
 endmodule
@@ -42,23 +50,23 @@ endmodule
 module debouncer (
     input wire clk,
     input wire in,
-    output wire out
+    output reg out
 );
-//initial out = 1'b0;
+initial out = 1'b0;
 
 // clock syncing
 reg in_sync_0;  always @(posedge clk) in_sync_0 <= in;
 reg in_sync_1;  always @(posedge clk) in_sync_1 <= in_sync_0;
-assign out = in_sync_1;
+//assign out = in_sync_1;
 // debouncing
 reg [3:0] state_time = 4'b0;
-// always @(posedge clk) begin
-//     if(in_sync_1 != out) begin
-//         state_time <= state_time + 4'b1;
-//         if(&state_time)
-//             out <= ~out; 
-//     end else
-//         state_time <= 4'b0;
-// end
+always @(posedge clk) begin
+    if(in_sync_1 != out) begin
+        state_time <= state_time + 4'b1;
+        if(&state_time)
+            out <= ~out;
+    end else
+        state_time <= 4'b0;
+end
 
 endmodule

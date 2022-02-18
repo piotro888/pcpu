@@ -17,6 +17,7 @@ module sregs(
     input wire [4:0] alu_flags_in,
     output reg [4:0] alu_flags,
     input wire alu_flags_ie,
+    input wire [15:0] real_pc_in,
 
     // paging
     input wire [15:0] addr_in,
@@ -69,7 +70,7 @@ always @(posedge clk, posedge rst) begin
             end
         end
 
-        if (instr_op == 7'b0001110 || instr_op == 7'b0001111 || instr_op == 7'b0011110 || (instr_op == 7'b0010001 && sr_sel == 16'b0)) begin
+        if ((instr_op == 7'b0001110 || instr_op == 7'b0001111 || instr_op == 7'b0011110 || (instr_op == 7'b0010001 && sr_sel == 16'b0)) && (pc_ie|pc_inc)) begin
             jtr_mode <= jtr_mode_buff;
         end
 
@@ -77,7 +78,12 @@ always @(posedge clk, posedge rst) begin
             rt_mode[2] <= 1'b1;
         end
         
-        if(irq_in & rt_mode[2]) begin
+        /* checking for pc condition is needed,
+         * because thats when pc changes to handle irq
+         * and we need this flags to know next address!
+         * (previously disabling rt_mode and irq_pc was incorrectly set)
+         */
+        if(irq_in & rt_mode[2] & (pc_ie|pc_inc)) begin
             // save old flags
             irq_flags[3:0] = {irq_instr, rt_mode[0], jtr_mode[1], rt_mode[3]};
 
@@ -91,10 +97,14 @@ always @(posedge clk, posedge rst) begin
             rt_mode[2] <= 1'b0;
 
             // save old pc to sr 3 (simultate change to next instruction - no repeat at iret)
-            if (pc_ie)
-                irq_pc <= sr_in[15:0];
+            if (pc_ie & pc_inc)
+                irq_pc <= real_pc_in + 16'b1;
+            else if (pc_ie)
+                irq_pc <= real_pc_in;
             else if (pc_inc)
                 irq_pc <= pc_in + 16'b1;
+            else
+                irq_pc <= 16'd888;
 
             // ? interrupt source
             // jump 0x1 in pc module

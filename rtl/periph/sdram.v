@@ -61,10 +61,13 @@ initial c_read_ready <= 1'b0;
 reg [22:0] i_addr;
 reg [15:0] i_data_in;
 
+reg [22:0] c_r_addr, c_w_addr; // to save addr at edge of bus
+
 reg sync_xory_read = 1'b0;
 always @(posedge srclk) begin
 	if(c_read_req & ~c_busy) begin
 		sync_xory_read <= sync_xory_read^1;
+        c_r_addr <= c_addr;
     end
 end
 reg sync_x_read_done = 1'b0;
@@ -74,6 +77,7 @@ reg sync_xory_write = 1'b0;
 always @(posedge srclk) begin
 	if(c_write_req & ~c_busy) begin
 		sync_xory_write <= sync_xory_write^1;
+        c_w_addr <= c_addr;
     end
 end
 
@@ -143,13 +147,13 @@ always @(posedge clk) begin
                 //STORE PROG AND DATA IN DIFFERENT BANKS TO NOT PRECHARGE EVERY COMMAND
                 //8192 rows x 512 col x 16 bit x 4 banks
                 // 13 b     +  9 b    + 16 b   + 2b
-                i_addr <= c_addr;
+                i_addr <= c_r_addr;
                 i_data_in <= c_data_in;
-                dr_ba <= {instruction_mode, c_addr[22]}; // lower max ram addr and set banks to msb???
+                dr_ba <= {instruction_mode, c_r_addr[22]}; // lower max ram addr and set banks to msb???
                 if(instruction_mode)
-                    dr_a <= c_addr[20:8]; // read instr addresses are shifted by 1
+                    dr_a <= c_r_addr[20:8]; // read instr addresses are shifted by 1
                 else
-                    dr_a <= c_addr[21:9];
+                    dr_a <= c_r_addr[21:9];
                 state <= STATE_WAIT;
                 wait_next_state <= STATE_READ;
                 wait_reg <= 16'd1;
@@ -158,10 +162,10 @@ always @(posedge clk) begin
 					 sync_x_read_done <= sync_x_read_done^1;
             end else if(pulse_c_write) begin
                 ram_cmd <= CMD_ACTIVE;
-                i_addr <= c_addr;
+                i_addr <= c_w_addr;
                 i_data_in <= c_data_in;
-                dr_ba <= {instruction_mode, c_addr[22]};
-                dr_a <= c_addr[21:9];
+                dr_ba <= {instruction_mode, c_w_addr[22]};
+                dr_a <= c_w_addr[21:9];
                 state <= STATE_WAIT;
                 wait_next_state <= STATE_WRITE;
                 l_instruction_mode <= instruction_mode;

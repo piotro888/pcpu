@@ -17,7 +17,7 @@ module sregs(
     input wire [4:0] alu_flags_in,
     output reg [4:0] alu_flags,
     input wire alu_flags_ie,
-    input wire [15:0] real_pc_in,
+    input wire [15:0] saved_pc,
 
     // paging
     input wire [15:0] addr_in,
@@ -80,7 +80,7 @@ always @(posedge clk, posedge rst) begin
         
         /* checking for pc condition is needed,
          * because thats when pc changes to handle irq
-         * and we need this flags to know next address!
+         * and we need this to switch paging and flags the in right moment
          * (previously disabling rt_mode and irq_pc was incorrectly set)
          */
         if(irq_in & rt_mode[2] & (pc_ie|pc_inc)) begin
@@ -96,15 +96,7 @@ always @(posedge clk, posedge rst) begin
             // disable interrrupts (this prevents only setting up irq_p in fetch, this interrrupt is processed ok)
             rt_mode[2] <= 1'b0;
 
-            // save old pc to sr 3 (simultate change to next instruction - no repeat at iret)
-            if (pc_ie & pc_inc)
-                irq_pc <= real_pc_in + 16'b1;
-            else if (pc_ie)
-                irq_pc <= real_pc_in;
-            else if (pc_inc)
-                irq_pc <= pc_in + 16'b1;
-            else
-                irq_pc <= 16'd888;
+            // save old pc (in pc module)
 
             // ? interrupt source
             // jump 0x1 in pc module
@@ -125,7 +117,7 @@ always @(*) begin
         case (sr_sel)
             16'b1: sr_out = rt_mode;
             16'b10: sr_out = jtr_mode;
-            16'b11: sr_out = irq_pc;
+            16'b11: sr_out = saved_pc;
             16'b100: sr_out = alu_flags;
             16'b101: sr_out = irq_flags;
             16'b110: sr_out = virt_scratch_reg;
@@ -142,7 +134,7 @@ always @(*) begin
 
     if(~jtr_mode[1])  begin
         prog_out = {4'b0, prog_in};
-        prog_page_out = 8'b0;
+        prog_page_out = prog_in[15:12];
     end else begin
         prog_out = {prog_page[prog_in[15:12]], prog_in[11:0]};
         prog_page_out = prog_page[prog_in[15:12]];

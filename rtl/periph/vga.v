@@ -38,6 +38,7 @@ end
 reg [10:0] hcnt, vcnt;
 
 reg [7:0] vga_config = 8'b01;
+reg [7:0] fast_scroll_line = 8'b0;
 reg [7:0] x_char_pos = 8'b0, y_char_pos = 8'b0;
 
 wire [60:0] char_rom_out;
@@ -52,7 +53,7 @@ charrom charom(
 reg [7:0] char_bit;
 
 always @(posedge pclk) begin
-	if(hcnt >= 640 || vcnt >= 480 || addrb > 4015 ) begin 
+	if(hcnt >= 640 || vcnt >= 480) begin 
 		r = 3'b000;
 		g = 3'b000;
 		b = 2'b00;
@@ -119,20 +120,31 @@ always @(posedge pclk) begin
 		vcnt = vcnt+1; 
 	end
 	if(vcnt > 480) begin
-		addrb = 0;
+		if(vga_config[3:0] == 4'b0001)
+			addrb = fast_scroll_line*106;
+		else
+			addrb = 0;
+	
 		x_char_pos = 0;
 		y_char_pos = 0;
 	end
 	if(vcnt == 526) begin
 		vcnt = 0;
 	end
+	if(vga_config[3:0] == 4'b0001 && addrb >= 106*48 && y_char_pos >= 9) begin
+		addrb = 0;
+	end
 end
 
-// always @(negedge cpu_clk) begin
-// 	if(addra == 14'h4000 && wea == 1'b1) begin // write to settings reg at address 0x4000
-// 		vga_config <= data[7:0];
-// 	end
-// end
+always @(negedge cpu_clk) begin
+	if(wea) begin
+		if(addra == 15'h3000) begin // write to settings reg at address 0x4000
+			vga_config <= data[7:0];
+		end else if(addra == 15'h3001) begin
+			fast_scroll_line <= data[7:0];
+		end
+	end
+end
 
 endmodule
 

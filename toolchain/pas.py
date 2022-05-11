@@ -19,12 +19,17 @@ instructions = {}
 generated = {}
 initinfo = {}
 macros = {}
+bssmap = {}
 line = 0 
 line_nr = 0
 filen = ''
 error_cnt = 0
 oformat = 0
 memmap = 0
+elfexec = {}
+bssaddr = 0
+bssoff = 0
+bssfin = 0
 
 def compileAll():
     global romaddr, ramaddr
@@ -50,11 +55,57 @@ def compileAll():
         mmf.write("-p\n")
         for label in addralias:
             mmf.write(""+label+" "+str(addralias[label])+"\n")
+        for label in bssmap:
+            mmf.write(""+label+" "+str(bssmap[label]+bssoff)+"\n")
         mmf.close()
-    output_file = open(output_path, "wt")
-    cs=0
+    
+    output_file = open(output_path, "wb" if elfexec else "wt")
+
     if error_cnt == 0:
-        if(oformat == 0):
+        cs=0
+        if elfexec:
+            layout_ram = 0
+            if layout_ram:
+                printv("ElfWrite: Selected RAM optimal profile (page aligned file)")
+                dataoff = 0+0x34+0x20*2
+                dataoff = (floor(dataoff/0x1000)+1)*0x1000
+
+                output_file.write(make_elf_header())
+                # LOAD prog section
+                output_file.write(
+                    make_elf_program_header(1, dataoff, 0, 0, romaddr*4, romaddr*4, 4+1))
+
+                memoff = (floor((dataoff+(romaddr*4))/0x1000)+1)*0x1000
+                # LOAD mem section
+                output_file.write(
+                    make_elf_program_header(1, memoff, 0, 0, bssoff*2, (bssoff+bssfin)*2, 4+2))
+            else: # layout file 
+                align = 1 # if we are only using 2 sections, align can be disabled (set to 1). Otherwise set to 0x1000. (mmap/copy)
+                printv("ElfWrite: Selected FILE size optimal profile (memory wasted at start of pages due to file align)")
+                dataoff = 0+0x34+0x20*2
+                output_file.write(make_elf_header(dataoff))
+       
+                # LOAD prog section
+                output_file.write(
+                    make_elf_program_header(1, dataoff, dataoff%align, dataoff%align, romaddr*4, romaddr*4, 4+1, align))
+
+                memoff = dataoff+(romaddr*4)
+                # LOAD mem section
+                output_file.write(
+                    make_elf_program_header(1, memoff, memoff%align, memoff%align, bssoff*2, (bssoff+bssfin)*2, 4+2, align))
+            # 3rd. file with disabled align?
+
+            printv(f'Writing rom page from offset {dataoff} (size={romaddr})')
+            output_file.seek(dataoff)
+            for addr in range(romaddr):
+                output_file.write(generated[addr].to_bytes(4, 'little'))
+            
+            printv(f'Writing ram page from offset {memoff} (size={bssoff})')
+            output_file.seek(memoff)
+            for addr in range(bssoff):
+                output_file.write(initinfo[addr].to_bytes(2, 'little'))
+
+        elif(oformat == 0):
             for addro, val in generated.items():
                 addr = hex(addro)[2:].zfill(4)
                 data = hex(val)[2:].zfill(8)
@@ -83,13 +134,15 @@ def compileAll():
             output_file.write(hex((65536-cs)%65536)[2:].zfill(8))
             output_file.write('*')
             if len(initinfo) > 0:
-                lastinitaddr = max(initinfo)
+                lastinitaddr = bssoff-1 if elfexec else max(initinfo)
                 for addr in range(0x4c00, lastinitaddr+1):
                     if addr in initinfo:
                         output_file.write(hex(initinfo[addr])[2:].zfill(4))
                     else:
                         output_file.write("0000")
             output_file.write('*')
+        output_file.close()
+    
     if error_cnt == 0:
         print('\033[0;32m[RESULT]\033[m Compilation finished successfully!')
         exitcode = 0
@@ -101,7 +154,7 @@ def compileAll():
     return exitcode
 
 def compileFileFirstRun(input_path):
-    global romaddr, ramaddr, addralias, labels, macros
+    global romaddr, ramaddr, addralias, labels, macros, bssmap, bssoff, bssfin, bssaddr
     global filen, line, line_nr
     filen = input_path
     printv(f"Resolving addresses (compile 1st run) in {input_path}")
@@ -143,13 +196,23 @@ def compileFileFirstRun(input_path):
                     printe('Expected 2 arguments')
                 elif(tokens[1] in addralias):
                     printe(f'Label redeclaration "{tokens[1]}"')
-                else:
+                elif not elfexec:
                     printv(f'Global {tokens[1]} address is {ramaddr}')
                     addralias[tokens[1]] = ramaddr
                     if(seg == segment.ROMD):
                         printe('Global declaration in ROM section')
                     else:
                         ramaddr = ramaddr + get_number(tokens[2])
+                else:
+                    printv(f'ELFBSS: Global {tokens[1]} local address is {bssaddr}')
+                    if(seg == segment.ROMD):
+                        printe('Global dleclaration in ROM section')
+                    elif(tokens[1] in bssmap):
+                        printe(f'Label redeclaration "{tokens[1]}"')
+                    else:
+                        bssmap[tokens[1]] = bssaddr
+                        bssaddr += get_number(tokens[2])
+
             elif(line.find('.rod') != -1): # use only if no OS - requires access to mem mapping to connect pmem to ram
                 if len(tokens) < 2:
                     printe("Excepted > 1 arguments")
@@ -194,9 +257,30 @@ def compileFileFirstRun(input_path):
                 else:
                     labels[line[:-1]] = romaddr
                     printv(f'Label {line[:-1]} address is {romaddr}')
-                
+
+    if elfexec:
+        printv(f'EE: ST1 done. Addr offset for bss {ramaddr}. Last bss-local addr {bssaddr}')
+        bssoff = ramaddr
+        bssfin = bssaddr
+    
     printv(f'Closing file {input_path}')
     input_file.close()
+
+def resolveOffAddr(addr):
+    abasen = addr[:addr.find('+')]
+    if abasen in addralias:
+        if addr[addr.find('+'):] in macros:
+            num = addralias[abasen]+macros[addr.find('+'):]
+        else:
+            num = addralias[abasen]+get_number(addr[addr.find('+'):])
+    elif elfexec and abasen in bssmap:
+        if addr[addr.find('+'):] in macros:
+            num = bssmap[abasen]+macros[addr.find('+'):]+bssoff
+        else:
+            num = bssmap[abasen]+get_number(addr[addr.find('+'):])+bssoff
+    else:
+        printe('Invalid address reference (offset detected)')
+    return num
 
 def compileFileSecondRun(input_path):
     global romaddr, ramaddr, code, memdata, generated, macros
@@ -232,24 +316,18 @@ def compileFileSecondRun(input_path):
                     if instr.pr2 == 1:
                         cinstr = cinstr | (getreg(tokens[tokenpos])<<13)
                         tokenpos = tokenpos+1
-                    if instr.pi == 2:
+                    if instr.pi == 2: #addr
                         addr = tokens[tokenpos]
                         resolvaddr = 0
                         if addr[0] == '#':
                             resolvaddr = get_number(addr[1:])
                         elif addr.find('+') != -1:
-                            abasen = addr[:addr.find('+')]
-                            printv(abasen)
-                            if abasen not in addralias:
-                                printe('Invalid address reference (offset detected)')
-                            else:
-                                if addr[addr.find('+'):] in macros:
-                                    resolvaddr = addralias[abasen]+macros[addr.find('+'):]
-                                else:
-                                    resolvaddr = addralias[abasen]+get_number(addr[addr.find('+'):])
+                            resolvaddr = resolveOffAddr(addr)
                         else:
                             if addr in addralias:
                                 resolvaddr = addralias[addr]
+                            elif elfexec and addr in bssmap:
+                                resolvaddr = bssmap[addr]+bssoff
                             else:
                                 resolvaddr = get_number(addr)
   
@@ -259,29 +337,23 @@ def compileFileSecondRun(input_path):
                         printv(f'Resolved address {resolvaddr}')
                         cinstr = cinstr | ((resolvaddr&65535)<<16)
                         tokenpos = tokenpos+1
-                    if instr.pi == 3:
+                    if instr.pi == 3: #imm
                         num = 0
                         printv(macros)
                         if tokens[tokenpos] in macros:
                             num = macros[tokens[tokenpos]]
                         elif tokens[tokenpos] in addralias:
                             num = addralias[tokens[tokenpos]]
+                        elif elfexec and tokens[tokenpos] in bssmap:
+                            num = bssmap[tokens[tokenpos]]+bssoff
                         elif tokens[tokenpos] in labels:
                             num = labels[tokens[tokenpos]]-1
                             printv("NOTE: offsetting [label] const for gcc. when using srs rx->pc address is offset by +1, so tah balances. you probably still want to use that")
                         elif tokens[tokenpos].find('+') != -1:
-                            addr = tokens[tokenpos]
-                            abasen = addr[:addr.find('+')]
-                            printv(abasen)
-                            if abasen not in addralias:
-                                printe('Invalid address reference (offset detected)')
-                            else:
-                                if addr[addr.find('+'):] in macros:
-                                    num = addralias[abasen]+macros[addr.find('+'):]
-                                else:
-                                    num = addralias[abasen]+get_number(addr[addr.find('+'):])
+                            num = resolveOffAddr(tokens[tokenpos])
                         else:
                             num = get_number(tokens[tokenpos])
+                        printv(f'Imm={num}')
                         cinstr = cinstr | ((num&65535)<<16)
                         if(num > 65535):
                             printe('16 bit overflow')
@@ -303,21 +375,17 @@ def compileFileSecondRun(input_path):
                 if not(tokens[1] in filesinclude):
                     compileFileSecondRun(tokens[1])
             elif(line.find('.global') != -1):
-                ramaddr = ramaddr + get_number(tokens[2])
+                pass
             elif(line.find('.rod') != -1):
-                parse_dd(stringTokenizer(line)[2:], True)
+                pass
             elif(line.find('.init') != -1):
-                parse_dd(stringTokenizer(line)[2:], False)
+                pass
             elif(line.find('.romd') != -1):
                 seg = segment.ROMD
             elif(line.find('.ramd') != -1):
                 seg = segment.RAMD
             elif(line.find('.org') != -1):
-                org = get_number(tokens[1])
-                if(seg == segment.ROMD):
-                    romaddr = org
-                else:
-                    ramaddr = org
+                pass
         #printv(f"RO{romaddr} RA{ramaddr}")
     printv(f'Closing file {input_path}')
     input_file.close()
@@ -394,6 +462,7 @@ def parse_dd(tokens, rom):
                 romaddr = romaddr+1
             else:
                 initinfo[ramaddr] = num
+                printv(f"AMem {ramaddr}={num}")
                 ramaddr = ramaddr+1
 
 
@@ -423,11 +492,27 @@ def prepare_line(line):
     line = line.strip()
     return line
 
+def make_elf_header(entry=0):
+    # todo add shoff
+    header = b'\x7f\x45\x4c\x46\x01\x01\x01\x31\x00\x00\x00\x00\x00\x00\x00\x00' + \
+             b'\x02\x00\x88\x08\x01\x00\x00\x00'+entry.to_bytes(4, 'little') + \
+             b'\x34\x00\x00\x00\x00\x00\x00\x00' +  \
+             b'\x00\x00\x00\x00\x34\x00\x20\x00\x02\x00\x00\x00\x00\x00\x00\x00'
+    return header
+
+def make_elf_program_header(command, offset, vaddr, paddr, filesz, memsz, flags, align=0x1000):
+    assert offset%align == vaddr%align
+    paramlist = [command, offset, vaddr, paddr, filesz, memsz, flags, align]
+    retbytes = b''
+    for x in paramlist:
+        retbytes += x.to_bytes(4, 'little')
+    return retbytes
+
 verbose = 0
 
 def parseArgs():
     args = sys.argv
-    global output_path, verbose, oformat, memmap
+    global output_path, verbose, oformat, memmap, elfexec
     output_path = ''
     
     for i, arg in enumerate(args):
@@ -446,10 +531,13 @@ def parseArgs():
             oformat = 1
         elif arg == "-m":
             memmap = 1
+        elif arg == "--elf-exec" or arg == "--elfexec":
+            elfexec = 1 # generate piOS elf executable. (puts all .global (bss) at end of address space)
+                        # to be replaced with proper linker and section management
         else:
             input_paths.append(arg)
-        if output_path == '':
-            output_path = 'out.hex'     
+    if output_path == '':
+        output_path = 'out.hex'
 
 def initInstructions():
     global instructions
@@ -536,7 +624,7 @@ class segment (Enum):
 
 def welcome():
     print("[INFO] pas - pcpu v2 assembler ")
-    print("[INFO] Version 1.6 by Piotr Węgrzyn\n")
+    print("[INFO] Version 1.7 by Piotr Węgrzyn\n")
 
 def help():
     pass

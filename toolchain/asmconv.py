@@ -235,6 +235,7 @@ def collect_objinfo(line, line_nr):
         params[1] = line[line.find("\""):]
         if(new_lines[-1][0:2] == 'CL' and section == "rodata"): # workaround for string declared as labels
             curr_obj["name"] = new_lines[-1][:-2]
+            new_lines.pop()
             curr_obj["section"] = "rodata"
             curr_obj["size"] = len(params[1])-1
             curr_obj["gcc_type"]="@object"

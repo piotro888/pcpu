@@ -94,7 +94,7 @@ def compileAll():
         print('\033[0;32m[RESULT]\033[m Compilation finished successfully!')
         exitcode = 0
     else:
-        print(f'\033[0;31m[RESULT]\033[m Compilation failed. {error_cnt} errors were found!')
+        print(f'\033[0;31m[RESULT]\033[m Compilation failed. {error_cnt} {"errors were" if error_cnt > 1 else "error was"} found!')
         exitcode = 1
     print(f'[INFO] Compilation time: {"%.5f" % float(time.time() - start_time)} seconds')
 
@@ -141,6 +141,8 @@ def compileFileFirstRun(input_path):
             elif(line.find('.global') != -1):
                 if len(tokens) != 3:
                     printe('Expected 2 arguments')
+                elif(tokens[1] in addralias):
+                    printe(f'Label redeclaration "{tokens[1]}"')
                 else:
                     printv(f'Global {tokens[1]} address is {ramaddr}')
                     addralias[tokens[1]] = ramaddr
@@ -151,18 +153,24 @@ def compileFileFirstRun(input_path):
             elif(line.find('.rod') != -1): # use only if no OS - requires access to mem mapping to connect pmem to ram
                 if len(tokens) < 2:
                     printe("Excepted > 1 arguments")
+                elif(tokens[1] in addralias):
+                    printe(f'Label redeclaration "{tokens[1]}"')
                 else:
                     addralias[tokens[1]] = romaddr
                     parse_dd(stringTokenizer(line)[2:], True)
             elif(line.find('.init') != -1):
                 if len(tokens) < 2:
                     printe("Excepted > 1 arguments")
+                elif(tokens[1] in addralias):
+                    printe(f'Label redeclaration "{tokens[1]}"')
                 else:
                     addralias[tokens[1]] = ramaddr
                     parse_dd(stringTokenizer(line)[2:], False)
             elif(line.find('.defc') != -1):
                 if len(tokens) != 3:
                     printe('Expected 2 arguments')
+                elif(tokens[1] in macros):
+                    printe(f'Defc redeclaration "{tokens[1]}"')
                 else:
                     macros[tokens[1]] = get_number(tokens[2])
                     printv(macros)
@@ -192,7 +200,7 @@ def compileFileFirstRun(input_path):
 
 def compileFileSecondRun(input_path):
     global romaddr, ramaddr, code, memdata, generated, macros
-    global line, linenr, filen
+    global line, linenr, filen, line_nr
     filen = input_path
     printv(f"Generating machine code (compile 2nd run) in {input_path}")
     input_file = open(input_path, "rt")
@@ -240,11 +248,11 @@ def compileFileSecondRun(input_path):
                                 else:
                                     resolvaddr = addralias[abasen]+get_number(addr[addr.find('+'):])
                         else:
-                            if addr not in addralias:
-                                resolvaddr = get_number(addr)
-                             #   printe('Invalid address reference')
-                            else:
+                            if addr in addralias:
                                 resolvaddr = addralias[addr]
+                            else:
+                                resolvaddr = get_number(addr)
+  
                         if resolvaddr > 65535 or resolvaddr < 0:
                                 #printe('16 bit overflow')
                                 pass
@@ -401,10 +409,17 @@ def get_line_type(line):
         return linetype.INSTRUCTION
 
 def prepare_line(line):
-    index = line.find(';')
-    if index != -1:
-        line = line[:index]
-    line = line.lower()
+    index = 0
+    instr = 0
+    for c in line:
+        if(c == "\""):
+            instr += 1
+            instr %= 2
+        if(c == ";" and instr == 0):
+            line = line[:index]
+            break
+        index += 1
+
     line = line.strip()
     return line
 
@@ -463,13 +478,9 @@ def initInstructions():
     instructions['jov'] = Instruction('jmp', 0x0E, 0, 0, 0, 4, 8)
     instructions['jpr'] = Instruction('jmp', 0x0E, 0, 0, 0, 4, 9)
     instructions['jal'] = Instruction('jal', 0x0F, 1, 0, 0, 4)
-#    instructions['ret'] = Instruction('ret', 0x10, 0, 0, 0, 0)
-#    instructions['psh'] = Instruction('psh', 0x11, 0, 1, 0, 0)
-#    instructions['pop'] = Instruction('pop', 0x12, 1, 0, 0, 0)
     instructions['srl'] = Instruction('srl', 0x10, 1, 0, 0, 3)
     instructions['srs'] = Instruction('srs', 0x11, 0, 1, 0, 3)
-#    instructions['scl'] = Instruction('scl', 0x15, 0, 0, 0, 2)
-#    instructions['trp'] = Instruction('trp', 0x16, 0, 0, 0, 0)
+    instructions['sys'] = Instruction('sys', 0x12, 0, 0, 0, 0)
     instructions['and'] = Instruction('and', 0x13, 1, 1, 1, 0)
     instructions['orr'] = Instruction('orr', 0x14, 1, 1, 1, 0)
     instructions['xor'] = Instruction('xor', 0x15, 1, 1, 1, 0)
@@ -525,7 +536,7 @@ class segment (Enum):
 
 def welcome():
     print("[INFO] pas - pcpu v2 assembler ")
-    print("[INFO] Version 1.5 by Piotr Węgrzyn\n")
+    print("[INFO] Version 1.6 by Piotr Węgrzyn\n")
 
 def help():
     pass

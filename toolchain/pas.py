@@ -83,7 +83,7 @@ def compileAll():
                 align = 1 # if we are only using 2 sections, align can be disabled (set to 1). Otherwise set to 0x1000. (mmap/copy)
                 printv("ElfWrite: Selected FILE size optimal profile (memory wasted at start of pages due to file align)")
                 dataoff = 0+0x34+0x20*2
-                output_file.write(make_elf_header(dataoff))
+                output_file.write(make_elf_header())
        
                 # LOAD prog section
                 output_file.write(

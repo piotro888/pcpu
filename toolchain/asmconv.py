@@ -8,6 +8,7 @@ objects = []
 new_lines = []
 section = "text"
 skip_line = 0
+mangled_local_names = {}
 
 def domagic(line, line_nr):
     global skip_line
@@ -33,6 +34,17 @@ def domagic(line, line_nr):
     parse_common(line)
     collect_objinfo(line, line_nr)
 
+def replace_mangled_params(param):
+    if(param.find('+') != -1):
+        addrpart = param[:param.find('+')]
+        offpart = param[param.find('+'):]
+    else:
+        addrpart = param
+        offpart = ''
+    if(mangled_local_names.get(addrpart)):
+        addrpart = mangled_local_names[addrpart]
+    return addrpart+offpart
+
 def check_jumps(line):
     tokens = tokenize(line)
     if((line[0] == 'j') and tokens[1][0:2]=='.L'):
@@ -46,24 +58,32 @@ def corr_sto(line):
     tokens = tokenize(line)
     if((tokens[0] == 'sto' or tokens[0] == 'ldo') and len(tokens) == 3):
         new_lines.pop()
-        new_lines.append('\t' + tokens[0][:-1] + 'd ' + tokens[1] + ', ' + tokens[2] +'\n')
+        new_lines.append('\t' + tokens[0][:-1] + 'd ' + tokens[1] + ', ' + replace_mangled_params(tokens[2]) +'\n')
 
 def parse_common(line):
+    global mangled_local_names
     if not (line.startswith(".comm")):
         return
     params = tokenize(line)[1:]
     truealign = int(math.log2(int(params[2])))
-    objdesc = {"name": params[0],
+    # .common declarations from gcc have .local if they are static so we can use it from collect objinfo
+    # name mangling is needed for static variables. Non-static are not suppling .global, we need to rely on reset_currobj and defaults
+    name = fn+params[0] if curr_obj["outside"] == "local" else params[0]
+    if curr_obj["outside"] == "local":
+        mangled_local_names[params[0]] = name
+    
+    objdesc = {"name": name,
                "section": "bss",
-               "outside": "export",
+               "outside": curr_obj["outside"],
                "size": int(params[1])*int(params[2]), #important = len*size
                "align": truealign,
                "gcc_type": "@object",
-               "v_type": "obj:noinit:export",
+               "v_type": f'obj:noinit:{curr_obj["outside"]}',
                "data": "<NO>"}
     if (truealign != 1):
         print("ERROR: NOT 16 BIT ALIGNMENTc") 
     objects.append(objdesc)
+    reset_currobj() # reset if default.local
 
 def conv_insns(line, line_nr):  
     tokens = tokenize(line)
@@ -77,6 +97,12 @@ def conv_insns(line, line_nr):
     if tokens[0] == "jgt**aa": # eqal no carry, so jeq tmp
         new_lines.pop()
         new_lines.append(f'\tjeq {templbl[1:-2]}\n\tjca {templbl[1:-2]}\t\njmp {"CL"+fn+tokens[1][2:]}\n{templbl}')
+    if (line[0:3] == 'ldd' or line[0:3] == 'ldi' or line[0:3] == 'std'):
+        new_lines.pop()
+        new_lines.append('\t'+tokens[0]+' '+tokens[1]+', '+replace_mangled_params(tokens[2])+'\n')
+    if line[0:3] == 'adi':
+        new_lines.pop()
+        new_lines.append('\t'+tokens[0]+' '+tokens[1]+', '+tokens[2]+', '+replace_mangled_params(tokens[3])+'\n')
     # if tokens[0] == "ldo**8" and len(tokens) == 4:
     #     new_lines.pop()
     #     new_lines.append(f'\tldo {tokens[1]}, {tokens[2]}, {tokens[3]}\n')
@@ -122,16 +148,16 @@ def conv_insns(line, line_nr):
         new_lines.append(f'\n\tldi r4, {tokens[2]}\n\tshr {tokens[1]}, {tokens[1]}, r4\n\tcai {tokens[1]}, {cpc}\n\tjeq {templbl[1:-2]}\n\tori {tokens[1]}, {tokens[1]}, {orc}\n{templbl}')
     if tokens[0] == "ldo**8" and len(tokens) == 4:
         new_lines.pop()
-        new_lines.append(f'\tldo {tokens[1]}, {tokens[2]}, {tokens[3]}\n')
+        new_lines.append(f'\tldo {tokens[1]}, {tokens[2]}, {replace_mangled_params(tokens[3])}\n')
     if tokens[0] == "ldo**8" and len(tokens) == 3:
         new_lines.pop()
-        new_lines.append(f'\tldd {tokens[1]}, {tokens[2]}\n')
+        new_lines.append(f'\tldd {tokens[1]}, {replace_mangled_params(tokens[2])}\n')
     if tokens[0] == "sto**8" and len(tokens) == 4:
         new_lines.pop()
-        new_lines.append(f'\tsto {tokens[1]}, {tokens[2]}, {tokens[3]}\n')
+        new_lines.append(f'\tsto {tokens[1]}, {tokens[2]}, {replace_mangled_params(tokens[3])}\n')
     if tokens[0] == "sto**8" and len(tokens) == 3:
         new_lines.pop()
-        new_lines.append(f'\tstd {tokens[1]}, {tokens[2]}\n')
+        new_lines.append(f'\tstd {tokens[1]}, {replace_mangled_params(tokens[2])}\n')
     
         
 
@@ -181,6 +207,8 @@ def collect_objinfo(line, line_nr):
             print("ERROR: NOT 16 BIT ALIGNMENT") 
     if line.startswith(".type"):
         curr_obj["name"] = params[1]
+        if curr_obj["outside"] == "local":
+            curr_obj["name"] = fn+curr_obj["name"]
         curr_obj["gcc_type"] = params[2]
         if(params[2] == "@function"):
             curr_obj["section"] = section
@@ -191,6 +219,8 @@ def collect_objinfo(line, line_nr):
         else:
             print("ERR TYPE")
     #print(curr_obj)
+    if line.startswith(".local"):
+        curr_obj["outside"] = "local"
     if line.startswith(".global"):
         curr_obj["outside"] = "export"
     if line.startswith(".size") and curr_obj["gcc_type"] == "@object":
@@ -259,7 +289,7 @@ def reset_currobj():
     curr_obj = {
     "name": "<NO>",
     "section": "<NO>",
-    "outside": "local",
+    "outside": "global",
     "size": "<NO>",
     "align": "1",
     "gcc_type": "<NO>",

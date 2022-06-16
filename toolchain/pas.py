@@ -1,4 +1,5 @@
 from enum import Enum
+from mimetypes import init
 import time
 import sys
 import re
@@ -64,6 +65,7 @@ def compileAll():
     if error_cnt == 0:
         cs=0
         if elfexec:
+            printv(initinfo)
             layout_ram = 0
             if layout_ram:
                 printv("ElfWrite: Selected RAM optimal profile (page aligned file)")
@@ -78,7 +80,7 @@ def compileAll():
                 memoff = (floor((dataoff+(romaddr*4))/0x1000)+1)*0x1000
                 # LOAD mem section
                 output_file.write(
-                    make_elf_program_header(1, memoff, 0, 0, bssoff*2, (bssoff+bssfin)*2, 4+2))
+                    make_elf_program_header(1, memoff, 0, 0, bssoff, (bssoff+bssfin), 4+2))
             else: # layout file 
                 align = 1 # if we are only using 2 sections, align can be disabled (set to 1). Otherwise set to 0x1000. (mmap/copy)
                 printv("ElfWrite: Selected FILE size optimal profile (memory wasted at start of pages due to file align)")
@@ -92,7 +94,7 @@ def compileAll():
                 memoff = dataoff+(romaddr*4)
                 # LOAD mem section
                 output_file.write(
-                    make_elf_program_header(1, memoff, memoff%align, memoff%align, bssoff*2, (bssoff+bssfin)*2, 4+2, align))
+                    make_elf_program_header(1, memoff, memoff%align, memoff%align, bssoff, (bssoff+bssfin), 4+2, align))
             # 3rd. file with disabled align?
 
             printv(f'Writing rom page from offset {dataoff} (size={romaddr})')
@@ -103,7 +105,10 @@ def compileAll():
             printv(f'Writing ram page from offset {memoff} (size={bssoff})')
             output_file.seek(memoff)
             for addr in range(bssoff):
-                output_file.write(initinfo[addr].to_bytes(2, 'little'))
+                if addr in initinfo:
+                    output_file.write(initinfo[addr].to_bytes(1, 'little'))
+                else:
+                    output_file.write(b'\00')
 
         elif(oformat == 0):
             for addro, val in generated.items():
@@ -135,11 +140,13 @@ def compileAll():
             output_file.write('*')
             if len(initinfo) > 0:
                 lastinitaddr = bssoff-1 if elfexec else max(initinfo)
-                for addr in range(0x4c00, lastinitaddr+1):
+                for addr in range(0x5000, lastinitaddr+1):
                     if addr in initinfo:
-                        output_file.write(hex(initinfo[addr])[2:].zfill(4))
+                        if (initinfo[addr]>>8) != 0: # TODO: Add option to support old memory mode
+                            printe("8b value overflow" + hex(addr))
+                        output_file.write(hex(initinfo[addr])[2:].zfill(2))
                     else:
-                        output_file.write("0000")
+                        output_file.write("00")
             output_file.write('*')
         output_file.close()
     
@@ -241,6 +248,9 @@ def compileFileFirstRun(input_path):
                 pass
             else:
                 printe('Invalid parameter')
+            
+            if(ramaddr%2 == 1): # FIXME: TEMPORARY FORCE ALIGNMENT
+                ramaddr += 1
 
         elif(ltype == linetype.INSTRUCTION):
             if(seg != segment.ROMD):
@@ -582,6 +592,10 @@ def initInstructions():
     instructions['div'] = Instruction('div', 0x1D, 1, 1, 1, 0)
     instructions['irt'] = Instruction('irt', 0x1E, 0, 0, 0, 0)
     # instructions['plo'] = Instruction('plo', 0x1D, 1, 1, 0, 2)
+    instructions['ld8'] = Instruction('ld8', 0x1F, 1, 0, 0, 2)
+    instructions['lo8'] = Instruction('lo8', 0x20, 1, 1, 0, 2)
+    instructions['sd8'] = Instruction('sd8', 0x21, 0, 1, 0, 2)
+    instructions['so8'] = Instruction('so8', 0x22, 0, 1, 1, 2)
     instructions['hlt'] = Instruction('hlt', 0x2F, 0, 0, 0, 0)
 
 class Instruction:

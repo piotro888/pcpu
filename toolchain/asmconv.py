@@ -59,6 +59,9 @@ def corr_sto(line):
     if((tokens[0] == 'sto' or tokens[0] == 'ldo') and len(tokens) == 3):
         new_lines.pop()
         new_lines.append('\t' + tokens[0][:-1] + 'd ' + tokens[1] + ', ' + replace_mangled_params(tokens[2]) +'\n')
+    if((tokens[0] == 'so8' or tokens[0] == 'lo8') and len(tokens) == 3):
+        new_lines.pop()
+        new_lines.append('\t' + tokens[0][0] + 'd' + tokens[0][2] + ' ' + tokens[1] + ', ' + replace_mangled_params(tokens[2]) +'\n')
 
 def parse_common(line):
     global mangled_local_names
@@ -75,7 +78,7 @@ def parse_common(line):
     objdesc = {"name": name,
                "section": "bss",
                "outside": curr_obj["outside"],
-               "size": int(params[1])*int(params[2]), #important = len*size
+               "size": int(params[1]),
                "align": truealign,
                "gcc_type": "@object",
                "v_type": f'obj:noinit:{curr_obj["outside"]}',
@@ -146,18 +149,6 @@ def conv_insns(line, line_nr):
         cpc = hex(0x8000>>int(tokens[2]))
         orc = hex((0xFFFF<<(16-int(tokens[2])))&0xFFFF)
         new_lines.append(f'\n\tldi r4, {tokens[2]}\n\tshr {tokens[1]}, {tokens[1]}, r4\n\tcai {tokens[1]}, {cpc}\n\tjeq {templbl[1:-2]}\n\tori {tokens[1]}, {tokens[1]}, {orc}\n{templbl}')
-    if tokens[0] == "ldo**8" and len(tokens) == 4:
-        new_lines.pop()
-        new_lines.append(f'\tldo {tokens[1]}, {tokens[2]}, {replace_mangled_params(tokens[3])}\n')
-    if tokens[0] == "ldo**8" and len(tokens) == 3:
-        new_lines.pop()
-        new_lines.append(f'\tldd {tokens[1]}, {replace_mangled_params(tokens[2])}\n')
-    if tokens[0] == "sto**8" and len(tokens) == 4:
-        new_lines.pop()
-        new_lines.append(f'\tsto {tokens[1]}, {tokens[2]}, {replace_mangled_params(tokens[3])}\n')
-    if tokens[0] == "sto**8" and len(tokens) == 3:
-        new_lines.pop()
-        new_lines.append(f'\tstd {tokens[1]}, {replace_mangled_params(tokens[2])}\n')
     
         
 
@@ -234,7 +225,7 @@ def collect_objinfo(line, line_nr):
     
     if(line.startswith(".short")):
         size_left -= 2
-        curr_obj["data"] = curr_obj["data"]+params[1]+",0," # added zeroes for making 16 mem like 8 bit, to make compiler happy in array access. Why i discovered that late?
+        curr_obj["data"] = curr_obj["data"]+f"{int(params[1])&0x00ff},{int(params[1])>>8}," # memory now is addressed by 8 bit (LE)
         if(size_left == 0):
             curr_obj["data"] = curr_obj["data"][4:-1]
             objects.append(curr_obj)
